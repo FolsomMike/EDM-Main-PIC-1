@@ -1,0 +1,1 @@
+fc "main.hex" "Second Code Sent by Trey - autedm64.HEX" /L/N > compared.txt

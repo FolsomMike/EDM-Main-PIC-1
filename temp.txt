@@ -1,0 +1,14 @@
+
+Jumps that were fixed by hand
+
+No alter : goto    L73        ;(0x300) - this one is OK
+No alter : goto    L55        ;(0x200) - fixed -> L55C
+No alter : call    L262        ;(0x68b) - fixed -> L101b (not totally sure, but made sense)
+No alter : goto    L263        ;(0x698) -> fixed L263c
+No alter : goto    L264        ;(0x69f) -> fixed L264c
+No alter : goto    L265        ;(0x69b) -> fixed L265c
+No alter : goto    L266        ;(0x6a5) -> fixed L266c
+
+
+
+    

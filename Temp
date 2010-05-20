@@ -1,0 +1,70 @@
+;--------------------------------------------------------------------------------------------------
+; Subroutine
+;
+
+L2:
+
+    xorlw   0xff            ; NOT W (invert)
+
+L176:
+    
+    bsf     FSR,7           ; FSR:7 = 1
+    andwf   INDF,F          ; [INDF] = [INDF] AND W
+    
+    goto    SetBank0ClrWDT  ;reset stuff and return
+
+; end of Subroutine
+;--------------------------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------------------------
+; GetDblSeq1to128       Returns Value From Table
+;
+; Input in W
+; Returns 1,2,4,8,16,32,64,128
+;
+; W:bit3 = 0 then FSR=6 else FSR=5
+; 
+; For the following values in W:bits0-3, returns:
+; 0 = 1, 1 = 2, 2 = 4, 3 = 8, 4 = 16, 5 = 32, 6 = 64, 7 = 128
+;
+
+GetDblSeq1to128:
+
+    movwf   var28           ; store W
+
+    movlw   0x6
+    btfsc   var28,3        
+    movlw   0x5
+    movwf   FSR             ; if W:bit3 = 0 then FSR=6 else FSR=5 (indirect addr pntr)
+
+    movlw   0x0
+    movwf   PCLATH          ; 0 -> PCLATH (zero upper 5 bits of program counter)
+
+    movf    var28,W         ; reload W
+    andlw   0x7             ; clear upper 5 bits of W
+    addwf   PCL,F           ; add W to program counter to jump into table that follows and
+                            ; return value at that point in the table
+
+    retlw   0x1             ; beginning of table
+    retlw   0x2
+    retlw   0x4
+L175:
+    retlw   0x8
+    retlw   0x10
+    retlw   0x20
+    retlw   0x40
+    retlw   0x80
+    
+    ; wip mks - The following code seems unlikely to ever be reached - the table jump above
+    ; limits the jump value to 7 which can't get here and no other code jumps here.  This
+    ; might have been the original form of this subroutine to return a table value for W and
+    ; was replaced by the table above.  The setting of the FSR register above might be obsolete
+    ; as well.
+
+    movwf   FSR             ; w -> FSR
+    movf    INDF,W          ; [INDF] -> W  load indirectly addressed value (from W) into W
+    goto    SetBank0ClrWDT  ; reset stuff and return
+
+; end of GetDblSeq1to128
+;--------------------------------------------------------------------------------------------------
+

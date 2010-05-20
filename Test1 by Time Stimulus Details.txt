@@ -1,0 +1,71 @@
+
+
+			Stimulus File Details
+
+millisecs   Seconds
+
+     1			All buttons released
+
+Extended/Non-Extended Menu Displayed Here
+
+   2000		2.0	Reset button pressed to select non-extended head mode (RB3 = 0)
+   2100		2.1	Reset button released (RB3 = 1)
+
+Main Menu Displayed Here
+
+   4000		4.0	Reset button pressed to select "Set Depth" (RB3 = 0)
+   4100		4.1	Reset button released (RB3 = 1)
+
+   6000		6.0	Up button toggled to increment first digit (RB4 = 0)
+   6100		6.1	Reset button released (RB3 = 1)
+
+   8000		8.0	Reset button pressed to skip first digit (RB3 = 0)
+   8100		8.1	Reset button released (RB3 = 1)
+
+  10000		10.0	Reset button pressed to skip second digit (RB3 = 0)
+  10100		10.1	Reset button released (RB3 = 1)
+
+  12000		12.0	Reset button pressed to skip third digit (RB3 = 0)
+  12100		12.1	Reset button released (RB3 = 1)
+
+  14000		14.0	Reset button pressed to skip fourth digit (RB3 = 0)
+  14100		14.1	Reset button released (RB3 = 1)
+
+Execution moves to set mode here.
+
+  16000		16.0	Up button toggled to change Wall/Notch Mode (RB4 = 0)
+  16100		16.1	Up button Released (RB4 = 1)
+
+  18000		18.0	Down button toggled to change Wall/Notch Mode (RB5 = 0)
+  18100		18.1	Down button released (RB5 = 1)
+
+  20000		20.0	Reset button pressed to exit "Set Depth" menu (RB3 = 0)
+  20100		20.1	Reset button released (RB3 = 1)
+
+Main Menu Displayed Here
+
+  22000		22.0	Down button toggled to select "Cut Notch" (RB5 = 0)
+  22100		22.1	Down button released (RB5 = 1)
+
+  24000		24.0	Reset button pressed to enter "Cut Notch" mode (RB3 = 0)
+  24100		24.1	Reset button released (RB3 = 1)
+
+Cut Notch Mode Displayed Here
+
+  25000		25.0	Hi Limit set to 1 to force blade advance (RA3 = 1)
+
+  26000		26.0	Dwn button toggled to decrement speed (RB5 = 0)
+  26100		26.1	Dwn button Released (RB5 = 1)
+
+  28000		28.0	Up button toggled to increment speed (RB4 = 0)
+  28100		28.1	Up button Released (RB4 = 1)
+
+
+
+Sample Inputs:
+
+
+  17000		13.0	Reset button pressed to exit "Cut Notch" mode (RB3 = 0)
+  17100		13.1	Reset button released (RB3 = 1)
+
+

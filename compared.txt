@@ -1,0 +1,3 @@
+Comparing files main.HEX and SECOND CODE SENT BY TREY - AUTEDM64.HEX
+FC: no differences encountered
+

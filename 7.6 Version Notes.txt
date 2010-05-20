@@ -1,0 +1,40 @@
+7.6 - no work
+
+7.6a - shortened noSparkTimer from 1f to 0, fixed set cut mode display bug, lenghtened switch debounce
+
+7.6b - added back in code that loops in retract until voltage is good again
+
+7.6c - put noSparkTimer back to 1f, left in retract until voltage is good again
+	(Trey found he was using wrong polarity, causing the shorts)
+
+7.6d - speeds 1-9 now equal 0x0101 - 0x8101.  Speed 0x0101 is basically no smart code,
+	advance will occur every time current is too low
+
+7.6e - switch debounce in cutNotch moved to interrupt routine
+
+-------------------------------------------------------------------------------------------------------
+
+Ver 7.6e
+
+1 min 12 sec full revolution of the cam in jog mode Up, mode switch = Setup, step size = full 
+
+20 sec for cam to move width of mounting bar in jog mode Up, mode switch = Normal, step size = full 
+(about .020" on the display)
+
+
+-------------------------------------------------------------------------------------------------------
+
+Ver 7.6f
+
+1 min 5 sec full revolution of the cam in jog mode Up, mode switch = Setup, step size = full 
+
+20-21 sec for cam to move width of mounting bar in jog mode Up, mode switch = Normal, step size = full 
+
+-------------------------------------------------------------------------------------------------------
+
+Ver 7.7a
+
+Note: Cam should turn counterclockwise when down button is pressed.
+
+
+-------------------------------------------------------------------------------------------------------

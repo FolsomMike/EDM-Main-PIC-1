@@ -1,0 +1,39 @@
+
+
+			Stimulus File Details
+
+cycles
+
+ 1			All buttons released
+
+ 7,500,000		Reset button pressed to select non-extended head mode (RB3 = 0)
+ 8,327,443		Reset button released (RB3 = 1)
+
+10,561,116		Reset button pressed to select "Set Depth" (RB3 = 0)
+11,429,509		Reset button released
+
+12,918,801		Reset button pressed to skip first digit
+13,787,136		Reset button released
+
+13,846,545		Reset button pressed to skip second digit
+14,714,878		Reset button released
+
+14,774,315		Reset button pressed to skip third digit
+15,642,617		Reset button released
+
+15,702,033		Reset button pressed to skip fourth digit
+16,570,366		Reset button released			
+
+Execution moves to set mode here.
+
+17,008,147		Up button toggled to change Wall/Notch Mode
+			(left active long enough to test twice)
+
+
+19,489,811		Up button released
+			Down button toggled to change Wall/Notch Mode
+
+20,745,481		Down button release
+			Reset button pressed to exit "Set Depth" menu
+
+21,613,780		Reset button released
