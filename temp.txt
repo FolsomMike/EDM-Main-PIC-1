@@ -1,5 +1,5 @@
 
-Jumps that were fixed by hand
+Jumps that were fixed by hand:
 
 No alter : goto    L73        ;(0x300) - this one is OK
 No alter : goto    L55        ;(0x200) - fixed -> L55C
