@@ -3,6 +3,9 @@
 ; Date:     1/18/08
 ; Revision: 7.7a
 ;
+; IMPORTANT: When programming the PIC in the notch cutter, turn the Electrode Current switch to
+; Off and the Electrode Motion switch to Setup.
+;
 ; Overview:
 ;
 ; This program controls an EDM cutting device by manipulating a motor which moves the head up and
@@ -1509,12 +1512,15 @@ quickRetractCN:
 	; This section waits until the LCD print service is not busy and then does a one time
 	; update of the direction symbol.
 
-	btfsc	flags, UPDATE_DIR_SYM
+	btfss	flags, UPDATE_DIR_SYM
+	goto    skipDirSymUpdateCN
+	bsf     STATUS,RP0				; switch RAM page to access LCDFlags
     btfsc   LCDFlags,LCDBusy
-    goto    skipDirSymUpdateCN
-
+	goto    skipDirSymUpdateCN
+ 
+    bcf     STATUS,RP0      		; switch back to main variables RAM page
 	bcf		flags,UPDATE_DIR_SYM	; only update the display one time while looping
-    bcf     STATUS,RP0
+ 
     movlw   0xc0
     call    writeControl    ; position at line 2 column 1
     movf    scratch7,W
@@ -1528,23 +1534,25 @@ quickRetractCN:
 
 skipDirSymUpdateCN:
 
+	bcf     STATUS,RP0      		; switch back to main variables RAM page
+
     btfsc   COMPARATOR,LO_LIMIT     ; check again, loop quickly until current is within
     goto    quickRetractCN          ; limits to avoid glow plugging
     
     goto    cutLoop
 
-displayPosLUCL:             ; updates the display if it is time to do so
+displayPosLUCL:             		; updates the display if it is time to do so
 
-    bsf     STATUS,RP0
+    bsf     STATUS,RP0				; switch RAM page to access LCDFlags
     btfss   LCDFlags,LCDBusy
     goto    displayCN
-    goto    checkPositionCN ; don't display if print buffer not ready      
+    goto    checkPositionCN 		; don't display if print buffer not ready      
 
 displayCN:
 
-    bcf     STATUS,RP0      
+    bcf     STATUS,RP0      		; switch back to main variables RAM page
 
-    bcf     flags,UPDATE_DISPLAY ; clear flag so no update until data changed again
+    bcf     flags,UPDATE_DISPLAY 	; clear flag so no update until data changed again
 
     ; display asterisk at "Up" or "Down" label depending on blade direction or erase if no movement
 
@@ -1569,7 +1577,7 @@ displayCN:
 
 checkPositionCN:
 
-    bcf     STATUS,RP0
+    bcf     STATUS,RP0				; switch back to main variables RAM page
 
     movlw   depth3
     call    isPosGtYQ
