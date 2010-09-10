@@ -1,7 +1,7 @@
 ;--------------------------------------------------------------------------------------------------
 ; Project:  Treco EDM Notch Cutter
 ; Date:     1/18/08
-; Revision: 7.7a
+; Revision: 7.7b
 ;
 ; IMPORTANT: When programming the PIC in the notch cutter, turn the Electrode Current switch to
 ; Off and the Electrode Motion switch to Setup.
@@ -26,6 +26,8 @@
 ;		 over current condition in auto cut mode.
 ;		Increased responsiveness in auto cut mode.
 ;		Changed motor step size back to Full.  This was the original setting used by the designer.
+; 7.7b  Motor direction reversed so motor wiring makes more sense.
+;		The "R" prefix removed from the displayed version so that the letter suffix can fit.
 ;
 ;--------------------------------------------------------------------------------------------------
 ;
@@ -1451,7 +1453,7 @@ moveDownLUCL:
 
     bsf     flags,UPDATE_DISPLAY ; force display update to show change
 
-    bsf     MOTOR,DIR       ; motor down
+    bcf     MOTOR,DIR       	 ; motor down
     call    pulseMotorWithDelay  ; move motor one step
                                  ; no delay before stepping because enough time wasted above
 
@@ -1476,7 +1478,7 @@ moveUpLUCL:
 
 ; voltage too low (current too high) - move cutting blade up
 
-    bcf     MOTOR,DIR              	; motor up   
+    bsf     MOTOR,DIR              	; motor up   
     call    pulseMotorWithDelay    	; move motor one step - delay to allow motor to move
     
     movlw   position3
@@ -1846,8 +1848,8 @@ saveSparkLevelsToEEprom:
 ; On entry:
 ;
 ; Desired motor direction bit set, ie:
-;       bcf     MOTOR,DIR       ; motor up
-;       bsf     MOTOR,DIR       ; motor down
+;       bsf     MOTOR,DIR       ; motor up
+;       bcf     MOTOR,DIR       ; motor down
 ;
 ; Uses W, FSR, PCLATH, scratch0, scratch1, scratch2, scratch3
 ;
@@ -2211,7 +2213,7 @@ loopJM:
 
 ; jog up button press    
 
-    bcf     MOTOR,DIR       ; motor up
+    bsf     MOTOR,DIR       ; motor up
 
     nop
     nop
@@ -2234,7 +2236,7 @@ chk_dwnJM:
 
 ; jog down button press
 
-    bsf     MOTOR,DIR      ; motor down
+    bcf     MOTOR,DIR      ; motor down
 
     nop
     nop
@@ -3707,10 +3709,10 @@ string0:    ; "OPT AutoNotcher Rx.x"
     retlw   'e'
     retlw   'r'
     retlw   ' '
-    retlw   'R'
     retlw   '7'
     retlw   '.'
     retlw   '7'
+    retlw   'b'
 
 string1:    ; "CHOOSE CONFIGURATION"
 
