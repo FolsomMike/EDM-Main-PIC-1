@@ -1,7 +1,7 @@
 ;--------------------------------------------------------------------------------------------------
 ; Project:  Treco EDM Notch Cutter
 ; Date:     1/18/08
-; Revision: 7.7b
+; Revision: 7.7c
 ;
 ; IMPORTANT: When programming the PIC in the notch cutter, turn the Electrode Current switch to
 ; Off and the Electrode Motion switch to Setup.
@@ -28,6 +28,9 @@
 ;		Changed motor step size back to Full.  This was the original setting used by the designer.
 ; 7.7b  Motor direction reversed so motor wiring makes more sense.
 ;		The "R" prefix removed from the displayed version so that the letter suffix can fit.
+; 7.7c	Added "repeat cycle" test function for testing for proper operation.  The head will be
+;		driven down until the low current input signal is cleared and then retracted quickly
+;		back to the starting position.  The cycle is repeated until the user exits.
 ;
 ;--------------------------------------------------------------------------------------------------
 ;
@@ -322,6 +325,9 @@ inDelay         EQU     0x04
     scratch8
     scratch9
     scratch10
+
+	debug0					; debug mks - use a scratch variable instead?
+	debug1					; debug mks - use a scratch variable instead?
 
     position3               ; MSByte position of the electrode in BCD digits
     position2
@@ -729,6 +735,10 @@ resetLCD:
 ; for other types.  If another type has been set, then it will immediately force a new call
 ; to the interrupt handler so that it will be handled.
 ;
+; NOTE NOTE NOTE
+; It is important to use no (or very few) subroutine calls.  The stack is only 8 deep and
+; it is very bad for the interrupt routine to use it.
+;
 
 interruptHandler:
 
@@ -756,6 +766,10 @@ endISR:
 ; timer0Interrupt function^
 ;
 ; This function is called when the timer 0 registers overflow.
+;
+; NOTE NOTE NOTE
+; It is important to use no (or very few) subroutine calls.  The stack is only 8 deep and
+; it is very bad for the interrupt routine to use it.
 ;
 
 timer0Interrupt:            ; Routine when the Timer1 overflows
@@ -1287,9 +1301,11 @@ skipDMM1:
 
     ; handle option 2 - Cut Notch
 
+	; flag is ignored because this was a pain - better to be able to zero after a cut - can start a new
+	; cut this way without powering down
     bsf     flags,CUT_STARTED ; set flag that cut started so unit cannot be zeroed
 
-    call    cutNotch
+    call    cutNotch		; start the auto notch cut function
 
     goto    doMainMenu      ; repeat main menu
     
@@ -1355,39 +1371,7 @@ cutNotch:
     call    printString     ; print the string
     call    waitLCD         ; wait until buffer printed    
 
-    movlw   0xc1
-    call    writeControl    ; position at line 2 column 2
-
-    movlw   .15
-    call    printString     ; "Up   Speed>"
-    call    waitLCD         ; wait until buffer printed
-
-    call    displaySpeed    ; display the current advance speed value (sparkTimer level)
-    call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
-
-    movlw   0x95
-    call    writeControl    ; position at line 3 column 2
-
-    movlw   .16
-    call    printString     ; "Down  Stop>"
-    call    waitLCD         ; wait until buffer printed    
-
-    movlw   depth3
-    call    displayBCDVar   ; display the depth to cut
-
-    movlw   0x22
-    call    writeChar       ; write '"' for inch mark
-
-    movlw   0xe5
-    call    writeControl    ; position at line 4 column 18
-    movlw   0x22
-    call    writeChar       ; write '"' for inch mark
-
-    movlw   0xdf
-    call    writeControl    ; position at line 4 column 12
-    call    displayPos      ; display the location of the head relative to the zero point
-
-    call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
+	call	setupCutNotchAndCycleTest	; finish the screen setup
 
     bcf     flags,AT_DEPTH  ; clear the depth reached flag
     bsf     flags,UPDATE_DISPLAY ; force display update first time through
@@ -1407,6 +1391,7 @@ cutLoop:
 
     bsf     EDM,POWER_ON    ; turn on the cutting voltage repeatedly
                             ; (this is a hack fix because the pin seems to get set low by electrical noise)
+							; (may not be true for properly grounded PCBs with high voltage caps in place)
 
     btfsc   flags,UPDATE_DISPLAY
     call    displayPosLUCL  ; update the display if data has been modified
@@ -1453,7 +1438,7 @@ moveDownLUCL:
 
     bsf     flags,UPDATE_DISPLAY ; force display update to show change
 
-    bcf     MOTOR,DIR       	 ; motor down
+    bsf     MOTOR,DIR       	 ; motor down
     call    pulseMotorWithDelay  ; move motor one step
                                  ; no delay before stepping because enough time wasted above
 
@@ -1478,11 +1463,11 @@ moveUpLUCL:
 
 ; voltage too low (current too high) - move cutting blade up
 
-    bsf     MOTOR,DIR              	; motor up   
+    bcf     MOTOR,DIR              	; motor up   
     call    pulseMotorWithDelay    	; move motor one step - delay to allow motor to move
     
     movlw   position3
-    call    decBCDVar				; going down decrements the position
+    call    decBCDVar				; going up decrements the position
 
     movlw   '*'
     movwf   scratch7                ; display asterisk by "Up" label
@@ -1507,7 +1492,7 @@ quickRetractCN:
     call    pulseMotorWithDelay    	; move motor one step - delay to allow motor to move
     
     movlw   position3
-    call    decBCDVar				; going down decrements the position
+    call    decBCDVar				; going up decrements the position
 
 	; Because the retract locks into a loop until the over current is cleared, the display
 	; update code is never called to show the asterisk by the "Up" label which is confusing.
@@ -1604,6 +1589,253 @@ exitCN:
     return
 
 ; end of cutNotch
+;--------------------------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------------------------
+; setupCutNotchAndCycleTest
+;
+; Prepares the screen for the cutNotch and cycleTest functions.  These share nearly identical
+; screens.
+;
+
+setupCutNotchAndCycleTest:
+
+    movlw   0xc1
+    call    writeControl    ; position at line 2 column 2
+
+    movlw   .15
+    call    printString     ; "Up   Speed>"
+    call    waitLCD         ; wait until buffer printed
+
+    call    displaySpeed    ; display the current advance speed value (sparkTimer level)
+    call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
+
+    movlw   0x95
+    call    writeControl    ; position at line 3 column 2
+
+    movlw   .16
+    call    printString     ; "Down  Stop>"
+    call    waitLCD         ; wait until buffer printed    
+
+    movlw   depth3
+    call    displayBCDVar   ; display the depth to cut
+
+    movlw   0x22
+    call    writeChar       ; write '"' for inch mark
+
+    movlw   0xe5
+    call    writeControl    ; position at line 4 column 18
+    movlw   0x22
+    call    writeChar       ; write '"' for inch mark
+
+    movlw   0xdf
+    call    writeControl    ; position at line 4 column 12
+    call    displayPos      ; display the location of the head relative to the zero point
+
+    call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
+
+	return
+
+; end of setupCutNotchAndCycleTest
+;--------------------------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------------------------
+; cycleTest
+;
+; Performs a test to verify the proper operation of the system.  The head is lowered until the
+; high current limit is inactive - this occurs when the blade nearly touches the pipe and
+; current begins to flow.  The head is then retracted back to the original position.  This cycle
+; is repeated until the user exits the test.  With each touchdown, only a tiny cut is made so the
+; depth should only change very slowly after many touchdowns.
+;
+; For the best test, the operator should use the jog mode to raise the head as high as possible
+; so that the maximum range is used in each cycle.
+;
+; NOTE: The system monitors the voltage of the cutting supply, NOT the current.  When the voltage
+; is high, the current must be low so the blade is lowered.  When the voltage is low, the current
+; must be high so the blade is raised.  This makes some of the logic appear to be backwards if
+; it is erroneously assumed that the current is being monitored instead of the voltage.
+;
+; Although the target depth to cut and the cutting speed labels are displayed, they are not
+; used by this function.
+;
+; NOTE: If the cutting power supply is turned off, the head will be raised due to the fact that
+;       the voltage appears to be low.
+;
+; On entry:
+;
+; Uses W, FSR, PCLATH, TMR0, OPTION_REG, preScaler,
+; 	scratch0, scratch1, scratch2, scratch3, scratch4, scratch5, scratch6, scratch7, scratch8
+;
+
+cycleTest:
+
+    movlw   0x0
+    movwf   scratch1
+    movlw   0xff
+    call    bigDelayA       ; delay - give user chance to release button
+    
+    call    clearScreen     ; clear the LCD screen
+
+    movlw   .19             ; "Cycle Test"
+    call    printString     ; print the string
+    call    waitLCD         ; wait until buffer printed    
+
+	call	setupCutNotchAndCycleTest	; finish the screen setup
+
+    bsf     flags,UPDATE_DISPLAY ; force display update first time through
+
+    movlw   ' '				; these variables store the direction symbol (an asterisk)
+    movwf   scratch7		; for display to show which direction the head is going
+    movlw   ' '				; clear them so garbage won't be displayed first time through
+    movwf   scratch8
+
+    bsf     EDM,POWER_ON    ; turn on the cutting voltage
+
+restartCycleCT:
+
+;debug mks - replace with scratch variables
+    movlw   .0				; clear the cycle distance counter to track distance lowered
+    movwf   debug0
+	movwf   debug1
+;debug mks
+
+cycleLoopCT:
+
+    bsf     EDM,POWER_ON    ; turn on the cutting voltage repeatedly
+                            ; (this is a hack fix because the pin seems to get set low by electrical noise)
+							; (may not be true for properly grounded PCBs with high voltage caps in place)
+
+    btfsc   flags,UPDATE_DISPLAY
+    call    displayPosLUCL  ; update the display if data has been modified
+
+    btfss   BUTTONS,RESET
+    goto    exitCT          ; exit the notch cutting mode if the reset button pressed
+
+checkHiLimitCT:
+
+    btfss   COMPARATOR,HI_LIMIT     ; is voltage too high? (current too low, not touching yet)
+    goto    upCycleCT             	; voltage drop - blade touching - begin up cycle
+									; unlike the cutNotch function, the blade never sits still
+
+moveDownCT:
+
+; voltage too high (current too low, not touching yet) - move cutting blade down
+
+	;count how many ticks the blade travels down before touchdown - on the up cycle this
+	;count will be used to stop the blade in approximately the original start position
+	;each time - as a cut is made, the up and down positions will move down slowly
+	incfsz  debug0,F		; increment low byte
+	goto	noIncCT
+	incf	debug1,F		; increment high byte
+
+noIncCT:
+
+    movlw   position3
+    call    incBCDVar       ; going down increments the position
+
+    movlw   ' '
+    movwf   scratch7
+    movlw   '*'
+    movwf   scratch8        ; display asterisk by "Down" label
+
+    bsf     flags,UPDATE_DISPLAY ; force display update to show change
+
+    bsf     MOTOR,DIR       	 ; motor down
+    call    pulseMotorWithDelay  ; move motor one step
+                                 ; no delay before stepping because enough time wasted above
+
+	goto	cycleLoopCT
+
+upCycleCT:
+
+; voltage too low (current too high - blade touching) - move cutting blade up
+
+    bcf     MOTOR,DIR              	; motor up   
+    call    pulseMotorWithDelay    	; move motor one step - delay to allow motor to move
+    
+    movlw   position3
+    call    decBCDVar				; going up decrements the position
+
+    movlw   '*'
+    movwf   scratch7                ; display asterisk by "Up" label
+    movlw   ' '
+    movwf   scratch8
+
+    bsf     flags,UPDATE_DISPLAY ; force display update to show change when retract is done
+								 ; the retract loop never calls the display update code
+
+	bsf		flags,UPDATE_DIR_SYM	; flag that the direction marker needs to changed to "Up"
+									; this can't be done immediately because the LDC print
+									; service might be busy, so set a flag to trigger the
+									; update during the retract loop when the LCD is ready
+
+;debug mks
+;    movlw   .50						; retract this many motor counts before even checking for current condition
+;    movwf   debug1                	
+;debug mks
+
+; enter a fast loop without much overhead to retract quickly until head returns to starting position
+
+quickRetractCT:
+
+    btfss   BUTTONS,RESET
+    goto    exitCT          ; exit the notch cutting mode if the reset button pressed
+
+    call    pulseMotorWithDelay    	; move motor one step - delay to allow motor to move
+    
+    movlw   position3
+    call    decBCDVar				; going up decrements the position
+
+	; Because the retract locks into a loop until the starting position is reached, the display
+	; update code is never called to show the asterisk by the "Up" label which is confusing.
+	; This section waits until the LCD print service is not busy and then does a one time
+	; update of the direction symbol.
+
+	btfss	flags, UPDATE_DIR_SYM
+	goto    skipDirSymUpdateCT
+	bsf     STATUS,RP0				; switch RAM page to access LCDFlags
+    btfsc   LCDFlags,LCDBusy
+	goto    skipDirSymUpdateCT
+ 
+    bcf     STATUS,RP0      		; switch back to main variables RAM page
+	bcf		flags,UPDATE_DIR_SYM	; only update the display one time while looping
+ 
+    movlw   0xc0
+    call    writeControl    ; position at line 2 column 1
+    movf    scratch7,W
+    call    writeChar       ; write asterisk or space by "Up" label
+    movlw   0x94
+    call    writeControl    ; position at line 3 column 1
+    movf    scratch8,W
+    call    writeChar       ; write asterisk or space by "Down" label
+    call    flushLCD        ; force buffer to print, but don't wait because jogging is time
+                            ; critical
+
+skipDirSymUpdateCT:
+
+	bcf     STATUS,RP0      ; switch back to main variables RAM page
+
+	; user counter to return blade to original start position
+
+    movlw   0xff            ; decrement debug1:0 (see note in bigDelay above for math details)
+    addwf   debug0,F
+    btfss   STATUS,C
+    addwf   debug1,F
+    btfss   STATUS,C
+    goto    restartCycleCT	; restart loop when counter reaches zero
+
+    goto    quickRetractCT
+	
+exitCT:
+
+    bcf     EDM,POWER_ON    ; turn off the cutting voltage
+
+    call    waitLCD         ; wait until buffer printed
+
+    return
+
+; end of cycleTest
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
@@ -1848,8 +2080,8 @@ saveSparkLevelsToEEprom:
 ; On entry:
 ;
 ; Desired motor direction bit set, ie:
-;       bsf     MOTOR,DIR       ; motor up
-;       bcf     MOTOR,DIR       ; motor down
+;       bcf     MOTOR,DIR       ; motor up
+;       bsf     MOTOR,DIR       ; motor down
 ;
 ; Uses W, FSR, PCLATH, scratch0, scratch1, scratch2, scratch3
 ;
@@ -2201,6 +2433,9 @@ jogMode:
     movlw   0xff
     call    bigDelayA       ; delay - give user chance to release button
 
+	btfss   BUTTONS,RESET	; if use is still holding RESET/ENTER button after the
+	goto	cycleTest		;	delay, start the cycle test function
+
     bsf     EDM,POWER_ON    ; turn on the cutting voltage
     
 loopJM:
@@ -2213,7 +2448,7 @@ loopJM:
 
 ; jog up button press    
 
-    bsf     MOTOR,DIR       ; motor up
+    bcf     MOTOR,DIR       ; motor up
 
     nop
     nop
@@ -2225,7 +2460,7 @@ loopJM:
     bsf     MOTOR,STEP      ; pulse motor controller step line to advance motor one step
 
     movlw   position3
-    call    decBCDVar       ; going down decrements the position
+    call    decBCDVar       ; going up decrements the position
 
     goto    updateJM        ; display the new location
 
@@ -2236,7 +2471,7 @@ chk_dwnJM:
 
 ; jog down button press
 
-    bcf     MOTOR,DIR      ; motor down
+    bsf     MOTOR,DIR      ; motor down
 
     nop
     nop
@@ -3712,7 +3947,7 @@ string0:    ; "OPT AutoNotcher Rx.x"
     retlw   '7'
     retlw   '.'
     retlw   '7'
-    retlw   'b'
+    retlw   'c'
 
 string1:    ; "CHOOSE CONFIGURATION"
 
@@ -4231,7 +4466,31 @@ string18:   ; "Wall Mode"
     retlw   'd'
     retlw   'e'
 
-string19:
+string19:   ; "Cycle Test"
+
+    decfsz  scratch0,F      ; count down until desired string reached
+    goto    string20        ; skip to next string if count not 0
+
+    movlw   #.10
+    movwf   scratch1        ; scratch1 = length of string
+
+    movlw   0x0d            ; point to this program memory page
+    movwf   PCLATH
+    movf    scratch2,W      ; restore character selector
+    
+    addwf   PCL,F
+    retlw   'C'
+    retlw   'y'
+    retlw   'c'   
+    retlw   'l'
+    retlw   'e'
+    retlw   ' '
+    retlw   'T'
+    retlw   'e'
+    retlw   's'
+	retlw   't'
+
+string20:
 
     return                  ; no string here yet
 
