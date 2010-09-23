@@ -33,6 +33,14 @@
 ;		back to the starting position.  The cycle is repeated until the user exits.
 ;
 ;--------------------------------------------------------------------------------------------------
+; Operational Notes
+;
+; Standard Head
+;
+; The cam should turn clockwise when the head is being driven down.
+; The cam should make a full rotation in 65 seconds while jogging up or down in Setup mode.
+;
+;--------------------------------------------------------------------------------------------------
 ;
 ; J8 on the schematics is implemented as switches labeled "microstep set" on the board.  The
 ; step size inputs to the motor controller chip are defined as follows:
@@ -227,6 +235,7 @@ WALL_MODE       EQU     0x3
 DATA_MODIFIED   EQU     0x4
 UPDATE_DISPLAY  EQU     0x5
 UPDATE_DIR_SYM  EQU     0x6
+MOTOR_DIR		EQU     0x7
 
 ; bits in LCDFlags
 
@@ -257,6 +266,8 @@ inDelay         EQU     0x04
                             ; bit 3: 0 = notch mode, 1 = wall reduction mode
                             ; bit 4: 0 = data not modified, 1 = data modified (used by various functions)
                             ; bit 5: 0 = no display update, 1 = display update (used by various functions)
+							; bit 6: 0 = no update direction symbol, 1 = update (used by various functions)
+							; bit 7: 0 = normal motor rotation, 1 = reverse motor direction
 
     menuOption              ; tracks which menu option is currently selected
 
@@ -601,6 +612,7 @@ setup:
 
     ; reset some values to a default state
     ; leave WALL_MODE as read from eeprom - this state is saved
+	; leave MOTOR_DIR as read from eeprom - this state is saved
 
     bcf     flags,EXTENDED_MODE
     bcf     flags,CUT_STARTED
@@ -622,13 +634,23 @@ setup:
     movlw   0xff                ; if one of the values loaded from EEPROM is 0xff, value in EEprom
     subwf   sparkLevelNotch,W   ; has never been previously set so force values to default
     btfss   STATUS,Z
-    goto    noClearSparkLevel
-    movlw   0x51                ; default the values - no need to save to eeprom
+    goto    noDefaultEEpromValues
+
+    movlw   0x51                ; default the values
     movwf   sparkLevelNotch
     movlw   0x11                ; wip mks => 0x21
     movwf   sparkLevelWall
     
-noClearSparkLevel:
+	;need to save to EEprom or flag values will be set back to default on each restart until
+	;the user adjusts the spark level to force a save of the new values over the 0xff in EEprom
+	call    saveSparkLevelsToEEprom
+
+    bcf     flags,WALL_MODE		; default to notch mode
+    bcf     flags,MOTOR_DIR		; default to normal motor direction
+
+	call	saveFlagsToEEprom	; save the new defaults
+
+noDefaultEEpromValues:
 
     ; set sparkLevel to value loaded for Notch or Wall mode depending on current mode
 
@@ -1093,6 +1115,11 @@ doExtModeMenu:
 
 ; scan for button inputs, highlight selected option, will return when Reset/Enter/Zero pressed
 
+LoopDEMM1:
+
+	bcf		menuOption,7		; clear the menu page change flags
+	bcf		menuOption,6
+
     movlw   .02                 ; maximum menu option number
     call    handleMenuInputs
 
@@ -1122,10 +1149,11 @@ doExtModeMenu:
     movwf   normDelay
 
     goto    exitDEMM7
-
-    return 
    
 skipDEMM6:
+
+    decfsz  scratch0,F
+    goto    skipDEMM7
 
     ; handle option 2 - extended reach cutting head installed
 
@@ -1145,7 +1173,11 @@ skipDEMM6:
     
     goto    exitDEMM7
 
-    return
+skipDEMM7:
+	
+	; this part reached if a menu page change flag bit is set in menuOption
+	; since there is only one page for this menu, ignore
+	goto	LoopDEMM1
 
 exitDEMM7:
 
@@ -1168,12 +1200,15 @@ exitDEMM7:
 ;--------------------------------------------------------------------------------------------------
 ; doMainMenu
 ;
-; Displays and handles the main menu:
+; Displays and handles the main menu page 1.  If the user moves cursor down while on bottom option
+; page 2 is displayed.
+;
+; Screen displayed:
 ;
 ; "OPT EDM Notch Cutter"
 ;
 ; 0x1, 0xc2
-; "1 - Set Cut Depth" OR "1 - Depth = "
+; "1 - Set Cut Depth" or "1 - Depth = "
 ;
 ; 0x1, 0x96
 ; "2 - Cut Notch"
@@ -1182,7 +1217,7 @@ exitDEMM7:
 ; "3 - Jog Electrode"
 ;
 ; 0x1, 0xc2
-; Carriage Return
+; Carriage Return (to place cursor on first option)
 ;
 ; It then processes user input.
 ;
@@ -1273,6 +1308,11 @@ skipString6:
     movlw   0x1
     movwf   menuOption      ; option 1 currently selected
 
+loopDMM1:
+
+	bcf		menuOption,7		; clear the menu page change flags
+	bcf		menuOption,6
+
 ; scan for button inputs, highlight selected option, will return when Reset/Enter/Zero pressed
 
     movlw   .03                 ; maximum menu option number
@@ -1312,7 +1352,7 @@ skipDMM1:
 skipDMM2:
 
     decfsz  scratch0,F
-    goto    exitDMM3
+    goto   	skipDMM3
 
     ; handle option 3 - Jog Electrode
 
@@ -1320,11 +1360,156 @@ skipDMM2:
 
     goto    doMainMenu      ; repeat main menu
 
-exitDMM3:
+skipDMM3:
 
-    return                  ; exit menu on error
+	btfsc	menuOption,7
+	goto	loopDMM1			; no previous menu page, ignore
+
+	btfsc	menuOption,6
+	goto    doMainMenuPage2     ; display next menu page
+
+	; this part should never be reached unless there is a programming error
+	; just redo the menu in this case
+
+	goto	doMainMenu
     
 ; end of doMainMenu
+;--------------------------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------------------------
+; doMainMenuPage2
+;
+; Displays and handles the main menu page 2.  If the user moves cursor up while on top option
+; page 1 is displayed.
+;
+; Screen displayed:
+;
+; 0x1, 0xc2
+; "4 - Cycle Test"
+;
+; 0x1, 0x96
+; "5 - Motor Dir Normal" or "5 - Motor Dir Reverse"
+;
+; 0x1, 0xc2
+; Carriage Return (to place cursor on first option)
+;
+; It then processes user input.
+;
+; Uses W, scratch0, scratch1, scratch2, scratch3, scratch4, scratch5, scratch6, scratch7, scratch8
+;
+; NOTE: LCD addressing is screwy - second line first column is 0xC0, third line is 0x94,
+;       fourth line is 0xd4.
+;
+
+doMainMenuPage2:
+
+;print the strings of the menu
+
+    call    clearScreen     ; clear the LCD screen (next print will flush this to LCD)
+
+; display the first option
+
+    movlw   .21             ; "4 - " prefix so can re-use "Cycle Test" string
+    call    printString     ; print the string
+	call    waitLCD         ; wait until buffer printed (can't use printString again before this)
+    movlw   .19             ; "Cycle Test"
+    call    printString     ; print the string
+    call    waitLCD         ; wait until buffer printed
+
+; display the second option
+
+    movlw   0xc0
+    call    writeControl    ; position at line 2 column 1
+
+    movlw   .20              ; "5 - Motor Dir " or "5 - Motor Dir "
+    call    printString     ; print the string
+    call    waitLCD         ; wait until buffer printed
+
+    btfsc  	flags,MOTOR_DIR  ; check for reverse motor direction ;
+	goto	revDirDMMP2
+
+    movlw   .22             ; add "Normal" suffix to motor dir line
+    call    printString     ; print the string
+	call    waitLCD         ; wait until buffer printed (can't use printString again before this)
+	goto	placeCursorDMMP2
+
+revDirDMMP2:
+
+    movlw   .23             ; add "Reverse" suffix to motor dir line
+    call    printString     ; print the string
+	call    waitLCD         ; wait until buffer printed (can't use printString again before this)
+
+placeCursorDMMP2:
+
+;position the cursor on the default selection
+
+    movlw   0x80
+    movwf   cursorPos       ; save cursor position for later use
+    call    writeControl    ; position at line 1 column 1
+    call    writeCR         ; write a carriage return to the LCD
+    call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
+
+    movlw   0x1
+    movwf   menuOption      ; option 1 currently selected
+
+loopDMMP21:
+
+	bcf		menuOption,7		; clear the menu page change flags
+	bcf		menuOption,6
+
+; scan for button inputs, highlight selected option, will return when Reset/Enter/Zero pressed
+
+    movlw   .02                 ; maximum menu option number
+    call    handleMenuInputs
+
+; parse the selected option ---------------------------------------------------
+
+    movf    menuOption,W       
+    movwf   scratch0
+
+    decfsz  scratch0,F
+    goto    skipDMMP21
+
+    ; handle option 4 - Cycle Test (menuOption value is 1)
+    
+    call    cycleTest       ; enter the "Cycle Test" function
+
+    goto    doMainMenuPage2 ; refresh menu
+ 
+skipDMMP21:
+
+    decfsz  scratch0,F
+    goto    skipDMMP24
+
+    ; handle option 5 - Motor Direction Change (menuOption value is 2)
+
+    btfss	flags,MOTOR_DIR		; motor direction is reverse?
+	goto	skipDMMP23
+
+	bcf		flags,MOTOR_DIR		; set motor direction to normal
+	call    saveFlagsToEEprom   ; save the new setting to EEprom
+    goto    doMainMenuPage2		; refresh menu
+
+skipDMMP23:
+
+	bsf		flags,MOTOR_DIR		; set motor direction to reverse
+    call    saveFlagsToEEprom   ; save the new setting to EEprom
+    goto    doMainMenuPage2		; refresh menu
+    
+skipDMMP24
+
+	btfsc	menuOption,7
+	goto	doMainMenu			; display previous menu page
+
+	btfsc	menuOption,6
+	goto    loopDMMP21			; no next menu page, ignore
+
+	; this part should never be reached unless there is a programming error
+	; just redo the menu in this case
+
+	goto	doMainMenuPage2
+    
+; end of doMainMenuPage2
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
@@ -1438,9 +1623,8 @@ moveDownLUCL:
 
     bsf     flags,UPDATE_DISPLAY ; force display update to show change
 
-    bsf     MOTOR,DIR       	 ; motor down
-    call    pulseMotorWithDelay  ; move motor one step
-                                 ; no delay before stepping because enough time wasted above
+    call    pulseMotorDownWithDelay  	; move motor one step
+                                 		; no delay before stepping because enough time wasted above
 
 checkLoLimit:
  
@@ -1463,8 +1647,7 @@ moveUpLUCL:
 
 ; voltage too low (current too high) - move cutting blade up
 
-    bcf     MOTOR,DIR              	; motor up   
-    call    pulseMotorWithDelay    	; move motor one step - delay to allow motor to move
+    call    pulseMotorUpWithDelay  	; move motor one step - delay to allow motor to move
     
     movlw   position3
     call    decBCDVar				; going up decrements the position
@@ -1741,9 +1924,8 @@ noIncCT:
 
     bsf     flags,UPDATE_DISPLAY ; force display update to show change
 
-    bsf     MOTOR,DIR       	 ; motor down
-    call    pulseMotorWithDelay  ; move motor one step
-                                 ; no delay before stepping because enough time wasted above
+    call    pulseMotorDownWithDelay	; move motor one step
+                                 	; no delay before stepping because enough time wasted above
 
 	goto	cycleLoopCT
 
@@ -1751,8 +1933,7 @@ upCycleCT:
 
 ; voltage too low (current too high - blade touching) - move cutting blade up
 
-    bcf     MOTOR,DIR              	; motor up   
-    call    pulseMotorWithDelay    	; move motor one step - delay to allow motor to move
+    call    pulseMotorUpWithDelay 	; move motor one step - delay to allow motor to move
     
     movlw   position3
     call    decBCDVar				; going up decrements the position
@@ -1769,11 +1950,6 @@ upCycleCT:
 									; this can't be done immediately because the LDC print
 									; service might be busy, so set a flag to trigger the
 									; update during the retract loop when the LCD is ready
-
-;debug mks
-;    movlw   .50						; retract this many motor counts before even checking for current condition
-;    movwf   debug1                	
-;debug mks
 
 ; enter a fast loop without much overhead to retract quickly until head returns to starting position
 
@@ -2066,7 +2242,46 @@ saveSparkLevelsToEEprom:
 
     return
 
-; end of  saveSparkLevelsToEEprom
+; end of saveSparkLevelsToEEprom
+;--------------------------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------------------------
+; pulseMotorDownWithDelay
+;
+; Moves the motor down one click, delaying as necessary for proper motor operation.
+;
+; Whether the direction bit is set or cleared depends upon the state of the Normal/Reverse
+; direction flag.  This option can be set by the user to adjust for systems with different wiring.
+;
+
+pulseMotorDownWithDelay:
+
+    bsf     MOTOR,DIR       	; motor down for normal direction option
+	btfsc	flags,MOTOR_DIR		; is motor direction option reverse?
+    bcf     MOTOR,DIR			; motor up for reverse direction option
+
+	goto	pulseMotorWithDelay
+
+; end of pulseMotorDownWithDelay
+;--------------------------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------------------------
+; pulseMotorUpWithDelay
+;
+; Moves the motor up one click, delaying as necessary for proper motor operation.
+;
+; Whether the direction bit is set or cleared depends upon the state of the Normal/Reverse
+; direction flag.  This option can be set by the user to adjust for systems with different wiring.
+;
+
+pulseMotorUpWithDelay:
+
+    bcf     MOTOR,DIR       	; motor up for normal direction option
+	btfsc	flags,MOTOR_DIR		; is motor direction option reverse?
+    bsf     MOTOR,DIR			; motor up for reverse direction option
+	goto	pulseMotorWithDelay
+
+; end of pulseMotorUpWithDelay
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
@@ -2080,8 +2295,9 @@ saveSparkLevelsToEEprom:
 ; On entry:
 ;
 ; Desired motor direction bit set, ie:
-;       bcf     MOTOR,DIR       ; motor up
-;       bsf     MOTOR,DIR       ; motor down
+;       bcf     MOTOR,DIR 
+;   or
+;       bsf     MOTOR,DIR
 ;
 ; Uses W, FSR, PCLATH, scratch0, scratch1, scratch2, scratch3
 ;
@@ -2433,9 +2649,6 @@ jogMode:
     movlw   0xff
     call    bigDelayA       ; delay - give user chance to release button
 
-	btfss   BUTTONS,RESET	; if use is still holding RESET/ENTER button after the
-	goto	cycleTest		;	delay, start the cycle test function
-
     bsf     EDM,POWER_ON    ; turn on the cutting voltage
     
 loopJM:
@@ -2448,7 +2661,9 @@ loopJM:
 
 ; jog up button press    
 
-    bcf     MOTOR,DIR       ; motor up
+    bcf     MOTOR,DIR       	; motor up for normal direction option
+	btfsc	flags,MOTOR_DIR		; is motor direction option reverse?
+    bsf     MOTOR,DIR			; motor up for reverse direction option
 
     nop
     nop
@@ -2471,7 +2686,9 @@ chk_dwnJM:
 
 ; jog down button press
 
-    bsf     MOTOR,DIR      ; motor down
+    bsf     MOTOR,DIR       	; motor down for normal direction option
+	btfsc	flags,MOTOR_DIR		; is motor direction option reverse?
+    bcf     MOTOR,DIR			; motor up for reverse direction option
 
     nop
     nop
@@ -2648,6 +2865,7 @@ clearScreen:
 ;
 ; On entry:
 ;
+; menuOption contains the number of the currently selected option.
 ; W should contain the maximum menu option number.
 ;
 ; Uses W, TMR0, OPTION_REG, buttonState, buttonPrev, cursorPos, menuOption,
@@ -2659,6 +2877,14 @@ handleMenuInputs:
     movwf   scratch4        ; store the maximum menu item number   
 
 loopHMMI:
+
+	; check to see if bit 7 or 6 of menuOption has been set
+	; this flags that the menu page needs to be changed
+
+	btfsc	menuOption,7
+	return
+	btfsc	menuOption,6
+	return
 
     call    scanButtons     ; watch for user input
 
@@ -2692,13 +2918,17 @@ skip_dwnHMMI:
 ;--------------------------------------------------------------------------------------------------
 ; selectHigherOption
 ;
-; Decrements menu_option if it is not already 1.
+; Decrements menu_option if it is not already 1, returns selected option in menuOption.
+;
+; If the user attempts to move above option 1, bit 7 of menuOption is set upon return.
+; This flag bit can be used to trigger a menu page change if there are more than one.
+; The lower 6 bits are able to handle 63 menu options - more than enough.
 ;
 ; On entry:
 ;
-; menu_option contains the number of the currently selected option.
+; menuOption contains the number of the currently selected option.
 ;
-; On return, menu_option contains the newly selected option.
+; On return, menuOption contains the newly selected option.
 ;
 ; Uses W, TMR0, OPTION_REG, menuOption, scratch0, scratch1, scratch2, scratch3
 ;
@@ -2713,10 +2943,16 @@ selectHigherOption:
     movlw   1
     movwf   menuOption      ; don't allow option less than 1
 
+	bsf     menuOption,7	; set bit 7 to show that user attempted to move curser
+						    ; above first option - can be used to change menu pages
+
     return
 
 ; move cursor
-; Note that the numbering for the lines is screwy - 0xc0, 0x94, 0xd4
+; Note that if the first option is not on line one or the last option not on the last line,
+; this section won't be reached because the code above prevents moving beyond option 1 or
+; the max option - thus constraining the cursor to the proper lines.
+; Note that the numbering for the lines is screwy - 0x80, 0xc0, 0x94, 0xd4
 
 moveCursorSHO:
 
@@ -2744,7 +2980,23 @@ line2SHO:
     call    writeControl    ; write the cursor to the LCD
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
 
-line3SHO:                   ; don't move cursor if at the top 0xc0
+	return
+
+line3SHO:
+
+    movlw    0xc0
+    subwf   cursorPos,W     ; is cursor at 0xc0?
+    btfss   STATUS,Z    
+    goto    line4SHO
+
+    movlw   0x80            ; move cursor up one line
+    movwf   cursorPos
+    call    writeControl    ; write the cursor to the LCD
+    call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
+
+	return
+
+line4SHO:                   ; don't move cursor if at the top
 
     return
 
@@ -2754,7 +3006,12 @@ line3SHO:                   ; don't move cursor if at the top 0xc0
 ;--------------------------------------------------------------------------------------------------
 ; selectLowerOption
 ;
-; Increments menu_option if it is not already at maximum specifed in W.
+; Increments menu_option if it is not already at maximum specifed in W, returns selected option in
+; menuOption.
+;
+; If the user attempts to move below the max option, bit 6 of menuOption is set upon return.
+; This flag bit can be used to trigger a menu page change if there are more than one.
+; The lower 6 bits are able to handle 63 menu options - more than enough.
 ;
 ; On entry:
 ;
@@ -2778,22 +3035,28 @@ selectLowerOption:
     btfss   STATUS,Z        ; jump if menuOption = W
     goto    moveCursorSLO
 
-    movf    scratch0,W
-    movwf   menuOption     ; set menuOption to the maximum option allowed
+    movf    scratch0,W		; already at max option, so exit
+    movwf   menuOption     	; set menuOption to the maximum option allowed
+
+	bsf     menuOption,6	; set bit 6 to show that user attempted to move curser
+						    ; above first option - can be used to change menu pages
 
     return
 
 ; move cursor
-; Note that the numbering for the lines is screwy - 0xc0, 0x94, 0xd4
+; Note that if the first option is not on line one or the last option not on the last line,
+; this section won't be reached because the code above prevents moving beyond option 1 or
+; the max option - thus constraining the cursor to the proper lines.
+; Note that the numbering for the lines is screwy - 0x80, 0xc0, 0x94, 0xd4
 
 moveCursorSLO:
 
-    movlw    0xc0
-    subwf   cursorPos,W     ; is cursor at 0xc0?
+    movlw    0x80
+    subwf   cursorPos,W     ; is cursor at 0x80?
     btfss   STATUS,Z    
     goto    line2SLO
 
-    movlw   0x94            ; move cursor up one line
+    movlw   0xc0            ; move cursor down one line
     movwf   cursorPos
     call    writeControl    ; write the cursor to the LCD
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
@@ -2802,17 +3065,33 @@ moveCursorSLO:
 
 line2SLO:
 
-    movlw    0x94
-    subwf   cursorPos,W     ; is cursor at 0xd4?
+    movlw    0xc0
+    subwf   cursorPos,W     ; is cursor at 0xc0?
     btfss   STATUS,Z    
     goto    line3SLO
 
-    movlw   0xd4            ; move cursor up one line
+    movlw   0x94            ; move cursor down one line
     movwf   cursorPos
     call    writeControl    ; write the cursor to the LCD
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
 
-line3SLO:                   ; don't move cursor if at the top 0xc0
+	return
+
+line3SLO:
+
+    movlw    0x94
+    subwf   cursorPos,W     ; is cursor at 0x94?
+    btfss   STATUS,Z    
+    goto    line4SLO
+
+    movlw   0xd4            ; move cursor down one line
+    movwf   cursorPos
+    call    writeControl    ; write the cursor to the LCD
+    call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
+
+	return
+
+line4SLO:                   ; don't move cursor if at the bottom
 
     return
 
@@ -3899,11 +4178,14 @@ waitWTE1:
 ;
 ; CAUTION: No string can cross over the PCL boundary (256 bytes) - when adding a new string, use
 ; org to reposition it if it will cross the boundary.  PCLATH MUST be adjusted for each string
-; to point to its bank location in memory.
+; to point to its bank location in memory:
+;
+;    movlw   0x0c            ; make sure this points to the page the string is on!!!!
+;    movwf   PCLATH
 ;
 ; CAUTION: If a string is inserted, all following strings must be checked to make sure they
 ; are not shifted to span a PCL boundary (every 256 bytes) - use ORG to prevent this.  Every
-; value loaded into PCLATH must be checked.
+; value loaded into PCLATH must be checked. Use View/Disassembly to see the address positions.
 ;
 ; Uses W, PCLATH, scratch0, scratch1, scratch2
 ;
@@ -4490,8 +4772,92 @@ string19:   ; "Cycle Test"
     retlw   's'
 	retlw   't'
 
-string20:
+string20:   ; "5 - Motor Dir "
 
+    decfsz  scratch0,F      ; count down until desired string reached
+    goto    string21        ; skip to next string if count not 0
+
+    movlw   #.14
+    movwf   scratch1        ; scratch1 = length of string
+
+    movlw   0x0d            ; point to this program memory page
+    movwf   PCLATH
+    movf    scratch2,W      ; restore character selector
+    
+    addwf   PCL,F
+    retlw   '5'
+    retlw   ' '
+    retlw   '-'
+    retlw   ' '
+    retlw   'M'
+    retlw   'o'
+    retlw   't'   
+    retlw   'o'
+    retlw   'r'
+    retlw   ' '
+    retlw   'D'
+    retlw   'i'
+    retlw   'r'
+	retlw   ' '
+
+string21:   ; "4 - "
+
+    decfsz  scratch0,F      ; count down until desired string reached
+    goto    string22        ; skip to next string if count not 0
+
+    movlw   #.4
+    movwf   scratch1        ; scratch1 = length of string
+
+    movlw   0x0d            ; point to this program memory page
+    movwf   PCLATH
+    movf    scratch2,W      ; restore character selector
+    
+    addwf   PCL,F
+    retlw   '4'
+    retlw   ' '
+    retlw   '-'
+    retlw   ' '
+
+string22:   ; "Normal"
+
+    decfsz  scratch0,F      ; count down until desired string reached
+    goto    string23        ; skip to next string if count not 0
+
+    movlw   #.6
+    movwf   scratch1        ; scratch1 = length of string
+
+    movlw   0x0d            ; point to this program memory page
+    movwf   PCLATH
+    movf    scratch2,W      ; restore character selector
+    
+    addwf   PCL,F
+    retlw   'N'
+    retlw   'o'
+    retlw   'r'
+    retlw   'm'
+    retlw   'a'
+    retlw   'l'
+
+    org     0xe00           ; skip ahead so string doesn't cross 256 byte boundary
+
+string23:   ; "Reverse"
+
+    decfsz  scratch0,F      ; count down until desired string reached
+    goto    string24        ; skip to next string if count not 0
+
+    movlw   #.3
+    movwf   scratch1        ; scratch1 = length of string
+
+    movlw   0x0e            ; point to this program memory page
+    movwf   PCLATH
+    movf    scratch2,W      ; restore character selector
+    
+    addwf   PCL,F
+    retlw   'R'
+    retlw   'e'
+    retlw   'v'
+
+string24:
     return                  ; no string here yet
 
 ; end of getStringChar
