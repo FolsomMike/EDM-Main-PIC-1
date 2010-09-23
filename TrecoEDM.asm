@@ -824,8 +824,8 @@ inDelayCheck:
     goto    startBitCheck       ;  (this delay is necessary between words, but is used
                                 ;    between every byte for simplicity)
 
-    decfsz  LCDDelay0,F         ; decrement (actually decrements lower byte on reaching 0
-    goto    endISR              ;   instead of -1, but still works okay)
+    decfsz  LCDDelay0,F         ; decrement (actually decrements upper byte when lower byte reaches 0
+    goto    endISR              ;   instead of just past 0, but accurate enough for this purpose)
     decfsz  LCDDelay1,F
     goto    endISR
 
@@ -2749,18 +2749,6 @@ updateJM:
     call    bigDelayA
 
 noExtraDelayJM:
-
-; removed because always erased asterisk because a move up/down always followed quickly by a no move
-; dead code - remove this
-; update the display when the preScaler reaches 0 because this is the only time the
-; position variable changes and it's too slow to display with every motor step
-
-    ;movf    preScaler1,F
-    ;btfss   STATUS,Z    
-    ;goto    loopJM          ; update display when preScaler reaches 0
-    ;movf    preScaler0,F
-    ;btfss   STATUS,Z    
-    ;goto    loopJM          ; update display when preScaler reaches 0
 
     bsf     STATUS,RP0
     btfss   LCDFlags,LCDBusy
