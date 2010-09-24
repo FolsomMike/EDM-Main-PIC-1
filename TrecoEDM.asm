@@ -511,6 +511,17 @@ inDelay         EQU     0x04
 
 start:
 
+;debug mks
+
+    movlw   0x2
+    movwf   scratch1
+    movlw   0x01
+    call    bigDelayA
+
+;debug mks
+
+
+
     call    setup           ; preset variables and configure hardware
 
 menuLoop:
@@ -1994,12 +2005,14 @@ skipDirSymUpdateCT:
 
 	; user counter to return blade to original start position
 
-    movlw   0xff            ; decrement debug1:0 (see note in bigDelay above for math details)
+    movlw   0xff            ; decrement LSByte by adding -1
     addwf   debug0,F
-    btfss   STATUS,C
-    addwf   debug1,F
-    btfss   STATUS,C
-    goto    restartCycleCT	; restart loop when counter reaches zero
+    btfss   STATUS,C		; did LSByte roll under (0->255)?
+	decf	debug1,F		; decrement MSByte after LSByte roll under
+	movf	debug0,W		; check MSB:LSB for zero
+	iorwf	debug1,W
+	btfsc	STATUS,Z
+	goto    restartCycleCT	; restart loop when counter reaches zero
 
     goto    quickRetractCT
 	
@@ -3241,34 +3254,35 @@ SetBank0ClrWDT:
 ;
 ; Notes on code for decrementing to 0:
 ;  subtract 1 from LSB by adding 0xff (two's comp for -1)
-;  C bit will be set until LSB is 0 - only value added to 0xff that won't carry
-;  When C bit not set, subtract 1 from MSB until it reaches 0 (carry will be 0)
+;  C bit will be set until LSB goes from 0 to 255; 0 is only value added to 0xff that won't carry
+;  When C bit not set, subtract 1 from MSB until it reaches 0
 ;
 ; Uses W, scratch0, scratch1, scratch2, scratch3
 ;
 
 bigDelay:
-
     clrf    scratch1
-
 bigDelayA:
-
     movwf   scratch0        ; store W
 
-L9:
+LoopBD1:
 
-    movlw   0xff            ; decrement scratch1:0 (see note above for details)
+    movlw   0xff            ; decrement LSByte by adding -1
     addwf   scratch0,F
-    btfss   STATUS,C
-    addwf   scratch1,F
-    btfss   STATUS,C
-    goto    SetBank0ClrWDT  ; when counter = 0, reset stuff and return
+    btfss   STATUS,C		; did LSByte roll under (0->255)?
+	decf	scratch1,F		; decrement MSByte after LSByte roll under
+	movf	scratch0,W		; check MSB:LSB for zero
+	iorwf	scratch1,W
+	btfsc	STATUS,Z
+	goto    SetBank0ClrWDT  ; counter = 0, reset stuff and return
+
+	; call inner delay for each count of outer delay
 
     movlw   0x3
     movwf   scratch3
     movlw   0xe6            ; scratch2:W = 0x3e6
     call    smallDelayA
-    goto    L9              ; loop
+    goto    LoopBD1         ; loop until outer counter is zero
 
 ; end of bigDelay
 ;--------------------------------------------------------------------------------------------------
@@ -3281,35 +3295,28 @@ L9:
 ; On entry at smallDelay, W holds LSB of delay value, MSB will be 0.
 ; On entry at smallDelayA, scratch3:W holds delay value.
 ;
-; For some reason, 5 is subtracted from the delay value upon entry and if
-; the LSB was <5 the WDT is cleared immediately instead of waiting for
-; the first period to expire.
-;
 ; Uses scratch2, scratch3
 ;
 
 smallDelay:
     clrf    scratch3
 smallDelayA:
-    addlw   0xfb
-    movwf   scratch2        ; scratch2 = W - 5 
-    comf    scratch3,F      ; complement scratch3 (so can use inc to decrement it)
-    movlw   0xff            ; W = -1
-    btfss   STATUS,C
-    goto    L10             ; if (var20 <= 4) exit
+    movwf   scratch2        ; store W
 
-L11:
-    addwf   scratch2,F      ; dec variable
-    btfsc   STATUS,C        
-    goto    L11             ; loop until 0
+LoopSD1:
 
-L10:
-    addwf   scratch2,F      ; dec scratch2 again - starts it over at 0xff
     clrwdt                  ; keep watch dog timer from triggering
-    incfsz  scratch3,F      ; increment scratch3
-    goto    L11             ; loop until scratch2 is zero
-    nop
-    return
+
+    movlw   0xff            ; decrement LSByte by adding -1
+    addwf   scratch2,F
+    btfss   STATUS,C		; did LSByte roll under (0->255)?
+	decf	scratch3,F		; decrement MSByte after LSByte roll under
+	movf	scratch2,W		; check MSB:LSB for zero
+	iorwf	scratch3,W
+	btfsc	STATUS,Z
+	return
+
+    goto    LoopSD1         ; loop until outer counter is zero
 
 ; end of smallDelay
 ;--------------------------------------------------------------------------------------------------
