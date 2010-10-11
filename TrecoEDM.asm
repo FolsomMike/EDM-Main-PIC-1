@@ -964,7 +964,23 @@ flipSign:
 
 scanButtons:
 
-    ; need to set delay value here for long debounce
+    ; delay here in case button was previously pushed to provide debounce
+	; delay before checking the button so the response will be instant
+	; works the same before or after for debounce purposes
+
+; if a button changed state last time through, delay to debounce
+
+;    movf    buttonPrev,W
+;    subwf   buttonState,W
+;    btfsc   STATUS,Z
+;    goto	skipSB1         ; buttonPrev = buttonState, no change, no debounce delay
+
+; a button input has changed, so delay to debounce
+
+    movlw   0x0
+    movwf   scratch1
+    movlw   0xff
+    call    bigDelayA       ; delay a longer time - give user chance to release button
 
     goto    skipSB1
     
@@ -999,20 +1015,23 @@ skipSB1:
     btfsc   BUTTONS,MODE
     bsf     buttonState,MODE
 
+;debug mks - remove this
 
 ; if a button has changed state, delay to debounce
 
-    movf    buttonPrev,W
-    subwf   buttonState,W
-    btfsc   STATUS,Z
-    return                  ; buttonPrev = buttonState, no change, exit without debounce delay
+;    movf    buttonPrev,W
+;    subwf   buttonState,W
+;    btfsc   STATUS,Z
+;    return                  ; buttonPrev = buttonState, no change, exit without debounce delay
 
 ; a button input has changed, so delay to debounce
 
-    movlw   0x0
-    movwf   scratch1
-    movlw   0xff
-    call    bigDelayA       ; delay a longer time - give user chance to release button
+;    movlw   0x1
+;    movwf   scratch1
+;    movlw   0xff
+;    call    bigDelayA       ; delay a longer time - give user chance to release button
+
+;debug mks - remove this
 
     return
 
