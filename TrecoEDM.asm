@@ -1933,11 +1933,6 @@ upCycleCT:
 
 ; voltage too low (current too high - blade touching) - move cutting blade up
 
-    call    pulseMotorUpWithDelay 	; move motor one step - delay to allow motor to move
-    
-    movlw   position3
-    call    decBCDVar				; going up decrements the position
-
     movlw   '*'
     movwf   scratch7                ; display asterisk by "Up" label
     movlw   ' '
@@ -1958,7 +1953,7 @@ quickRetractCT:
     btfss   BUTTONS,RESET
     goto    exitCT          ; exit the notch cutting mode if the reset button pressed
 
-    call    pulseMotorWithDelay    	; move motor one step - delay to allow motor to move
+    call    pulseMotorUpWithDelay  	; move motor up one step - delay to allow motor to move
     
     movlw   position3
     call    decBCDVar				; going up decrements the position
