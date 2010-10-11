@@ -1,7 +1,7 @@
 ;--------------------------------------------------------------------------------------------------
 ; Project:  Treco EDM Notch Cutter
 ; Date:     1/18/08
-; Revision: 7.7c
+; Revision: 7.7d
 ;
 ; IMPORTANT: When programming the PIC in the notch cutter, turn the Electrode Current switch to
 ; Off and the Electrode Motion switch to Setup.
@@ -31,6 +31,11 @@
 ; 7.7c	Added "repeat cycle" test function for testing for proper operation.  The head will be
 ;		driven down until the low current input signal is cleared and then retracted quickly
 ;		back to the starting position.  The cycle is repeated until the user exits.
+; 7.7d	Fixed bug in "repeat cycle" test where it was locking up in the retreat mode because
+;		the power supply wasn't coming up fast enough at the start.
+;		Improved the input button handling - better debounce, faster response.
+;		Improved the multiple page menu handling - cursor starts on bottom option when moving
+;		back to a previous menu page.
 ;
 ;--------------------------------------------------------------------------------------------------
 ; Operational Notes
@@ -4240,7 +4245,7 @@ string0:    ; "OPT AutoNotcher Rx.x"
     retlw   '7'
     retlw   '.'
     retlw   '7'
-    retlw   'c'
+    retlw   'd'
 
 string1:    ; "CHOOSE CONFIGURATION"
 
