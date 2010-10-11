@@ -511,17 +511,6 @@ inDelay         EQU     0x04
 
 start:
 
-;debug mks
-
-    movlw   0x2
-    movwf   scratch1
-    movlw   0x01
-    call    bigDelayA
-
-;debug mks
-
-
-
     call    setup           ; preset variables and configure hardware
 
 menuLoop:
@@ -590,7 +579,7 @@ setup:
     movlw   0x3
     movwf   scratch1
     movlw   0xe8
-    call    bigDelayA       ; delay 1000
+    call    bigDelayA       ; delay
 
     bcf     EDM,POWER_ON    ;  turn off the cutting voltage
     
@@ -1018,12 +1007,12 @@ skipSB1:
     btfsc   STATUS,Z
     return                  ; buttonPrev = buttonState, no change, exit without debounce delay
 
-; a button input has changed, delay to debounce
+; a button input has changed, so delay to debounce
 
     movlw   0x0
     movwf   scratch1
-    movlw   0xff            ; was bf
-    call    bigDelayA       ; delay a long time - give user chance to release button
+    movlw   0xff
+    call    bigDelayA       ; delay a longer time - give user chance to release button
 
     return
 
@@ -3267,6 +3256,13 @@ bigDelayA:
 
 LoopBD1:
 
+	; call inner delay for each count of outer delay
+
+    movlw   0x1
+    movwf   scratch3
+    movlw   0x6a            ; scratch3:W = delay value
+    call    smallDelayA
+
     movlw   0xff            ; decrement LSByte by adding -1
     addwf   scratch0,F
     btfss   STATUS,C		; did LSByte roll under (0->255)?
@@ -3276,12 +3272,6 @@ LoopBD1:
 	btfsc	STATUS,Z
 	goto    SetBank0ClrWDT  ; counter = 0, reset stuff and return
 
-	; call inner delay for each count of outer delay
-
-    movlw   0x3
-    movwf   scratch3
-    movlw   0xe6            ; scratch2:W = 0x3e6
-    call    smallDelayA
     goto    LoopBD1         ; loop until outer counter is zero
 
 ; end of bigDelay
