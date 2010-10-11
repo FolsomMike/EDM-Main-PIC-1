@@ -1852,11 +1852,6 @@ setupCutNotchAndCycleTest:
 ;
 
 cycleTest:
-
-    movlw   0x0
-    movwf   scratch1
-    movlw   0xff
-    call    bigDelayA       ; delay - give user chance to release button
     
     call    clearScreen     ; clear the LCD screen
 
@@ -1874,6 +1869,11 @@ cycleTest:
     movwf   scratch8
 
     bsf     EDM,POWER_ON    ; turn on the cutting voltage
+
+    movlw   0x3
+    movwf   scratch1
+    movlw   0xe8
+    call    bigDelayA       ; delay to give power supply a chance to come up
 
 restartCycleCT:
 
