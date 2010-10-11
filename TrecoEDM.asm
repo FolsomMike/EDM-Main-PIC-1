@@ -944,9 +944,8 @@ flipSign:
 ;  Entry at scanButtons first performs a long delay which debounces the switch if it was pressed
 ;  recently and gives the user time to release the button before it triggers again.
 ;
-;  Entry at scanButtonsQ performs a short delay which debounces the switch if it was pressed
-;  recently but quickly reads the switch again so the user can hold it down and get repeated
-;  action.
+;  Entry at scanButtonsQ performs a shorter delay for use by functions which already have some
+;  built in delay.
 ;
 ; On entry: no values required
 ;
@@ -964,16 +963,9 @@ flipSign:
 
 scanButtons:
 
-    ; delay here in case button was previously pushed to provide debounce
-	; delay before checking the button so the response will be instant
-	; works the same before or after for debounce purposes
-
-; if a button changed state last time through, delay to debounce
-
-;    movf    buttonPrev,W
-;    subwf   buttonState,W
-;    btfsc   STATUS,Z
-;    goto	skipSB1         ; buttonPrev = buttonState, no change, no debounce delay
+; delay here in case button was previously pushed to provide debounce
+; delay before checking the button so the response will be instant
+; works the same before or after for debounce purposes
 
 ; a button input has changed, so delay to debounce
 
@@ -986,12 +978,12 @@ scanButtons:
     
 scanButtonsQ:
 
-    ; need to mimic above code, remove following, set delay for short debounce
+    ; short delay
 
     movlw   0x0
     movwf   scratch1
     movlw   0x1
-    call    bigDelayA       ; delay a short time - debounce, but repeat quickly if remains pressed
+    call    bigDelayA       ; delay a short time - calling function is expected to delay some also
 
 skipSB1:
 
@@ -1014,24 +1006,6 @@ skipSB1:
 
     btfsc   BUTTONS,MODE
     bsf     buttonState,MODE
-
-;debug mks - remove this
-
-; if a button has changed state, delay to debounce
-
-;    movf    buttonPrev,W
-;    subwf   buttonState,W
-;    btfsc   STATUS,Z
-;    return                  ; buttonPrev = buttonState, no change, exit without debounce delay
-
-; a button input has changed, so delay to debounce
-
-;    movlw   0x1
-;    movwf   scratch1
-;    movlw   0xff
-;    call    bigDelayA       ; delay a longer time - give user chance to release button
-
-;debug mks - remove this
 
     return
 
