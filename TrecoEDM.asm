@@ -1045,7 +1045,13 @@ zeroQuad:
 ;--------------------------------------------------------------------------------------------------
 ; doExtModeMenu
 ;
-; Displays and handles the Standard / Extended depth mode menu:
+; Displays and handles the Standard / Extended depth mode menu.
+;
+; If doExtModeMenu is called, the menu is displayed with option 1 highlighted.
+; If doExtModeMenuA is called, the cursorPos and menuOption should be preloaded by the calling
+;  function to set the default highlighted option.
+;
+; Menu display:
 ;
 ; "OPT AutoNotcher Rx.x" 
 ;
@@ -1070,6 +1076,15 @@ zeroQuad:
 ;
 
 doExtModeMenu:
+
+	; call here to default to option 1
+
+    movlw   0x94
+    movwf   cursorPos       ; option 1 highlighted
+    movlw   0x1
+    movwf   menuOption      ; option 1 currently selected
+
+doExtModeMenuA:				; call here if default option has already been set by caller
 
 ;print the strings of the menu
 
@@ -1097,14 +1112,10 @@ doExtModeMenu:
 
 ; position the cursor on the default selection
     
-    movlw   0x94
-    movwf   cursorPos       ; save cursor position for later use
+    movf    cursorPos,W		; load the cursor position to highlight the current choice
     call    writeControl    ; write line 3 column 1
     call    writeCR         ; write a carriage return to the LCD
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
-
-    movlw   0x1
-    movwf   menuOption     ; option 1 currently selected
 
 ; scan for button inputs, highlight selected option, will return when Reset/Enter/Zero pressed
 
@@ -1196,6 +1207,10 @@ exitDEMM7:
 ; Displays and handles the main menu page 1.  If the user moves cursor down while on bottom option
 ; page 2 is displayed.
 ;
+; If doMainMenu is called, the menu is displayed with option 1 highlighted.
+; If doMainMenuA is called, the cursorPos and menuOption should be preloaded by the calling
+;  function to set the default highlighted option.
+;
 ; Screen displayed:
 ;
 ; "OPT EDM Notch Cutter"
@@ -1221,6 +1236,15 @@ exitDEMM7:
 ;
 
 doMainMenu:
+
+	; call here to default to option 1
+
+    movlw   0xc0
+    movwf   cursorPos       ; option 1 highlighted
+    movlw   0x1
+    movwf   menuOption      ; option 1 currently selected
+
+doMainMenuA:				; call here if default option has already been set by caller
 
 ;print the strings of the menu
 
@@ -1292,14 +1316,10 @@ skipString6:
 
 ;position the cursor on the default selection
 
-    movlw   0xc0
-    movwf   cursorPos       ; save cursor position for later use
+    movf    cursorPos,W		; load the cursor position to highlight the current choice
     call    writeControl    ; position at line 2 column 1
     call    writeCR         ; write a carriage return to the LCD
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
-
-    movlw   0x1
-    movwf   menuOption      ; option 1 currently selected
 
 loopDMM1:
 
@@ -1375,6 +1395,10 @@ skipDMM3:
 ; Displays and handles the main menu page 2.  If the user moves cursor up while on top option
 ; page 1 is displayed.
 ;
+; If doMainMenuPage2 is called, the menu is displayed with option 1 highlighted.
+; If doMainMenuPage2A is called, the cursorPos and menuOption should be preloaded by the calling
+;  function to set the default highlighted option.
+;
 ; Screen displayed:
 ;
 ; 0x1, 0xc2
@@ -1395,6 +1419,15 @@ skipDMM3:
 ;
 
 doMainMenuPage2:
+
+	; call here to default to option 1
+
+    movlw   0x80
+    movwf   cursorPos       ; option 1 highlighted
+    movlw   0x1
+    movwf   menuOption      ; option 1 currently selected
+
+doMainMenuPage2A:			; call here if first option has already been set by caller
 
 ;print the strings of the menu
 
@@ -1436,14 +1469,10 @@ placeCursorDMMP2:
 
 ;position the cursor on the default selection
 
-    movlw   0x80
-    movwf   cursorPos       ; save cursor position for later use
+    movf    cursorPos,W		; load the cursor position to highlight the current choice
     call    writeControl    ; position at line 1 column 1
     call    writeCR         ; write a carriage return to the LCD
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
-
-    movlw   0x1
-    movwf   menuOption      ; option 1 currently selected
 
 loopDMMP21:
 
@@ -1489,10 +1518,19 @@ skipDMMP23:
     call    saveFlagsToEEprom   ; save the new setting to EEprom
     goto    doMainMenuPage2		; refresh menu
     
-skipDMMP24
+skipDMMP24:
 
-	btfsc	menuOption,7
-	goto	doMainMenu			; display previous menu page
+	btfss	menuOption,7
+	goto	skipDMMP25
+
+	;go back to previous menu with last option defaulted	
+    movlw   0xd4
+    movwf   cursorPos       ; last option highlighted
+    movlw   0x3
+    movwf   menuOption      ; last option currently selected
+	goto	doMainMenuA		; display previous menu page
+
+skipDMMP25:
 
 	btfsc	menuOption,6
 	goto    loopDMMP21			; no next menu page, ignore
