@@ -36,6 +36,22 @@
 ;		Improved the input button handling - better debounce, faster response.
 ;		Improved the multiple page menu handling - cursor starts on bottom option when moving
 ;		back to a previous menu page.
+; 7.7e  Fixed incrementing/decrementing of multibyte variables -- decrementing was skipping a
+;		count when crossing the zero thresold of an upper byte.
+;
+;--------------------------------------------------------------------------------------------------
+; Miscellaneous Notes
+;
+; incf vs decf rollover
+;
+; When incrementing multi-byte values, incf can be used because it sets the Z flag - then the Z
+; flag is set, the next byte up should then be incremented.
+; When decrementing multi-byte values, decf CANNOT be used because it sets the Z flag but NOT the
+; C flag.  The next byte up is not decremented when the lower byte reaches zero, but when it rolls
+; under zero.  This can be caught by loading w with 1 and then using subwf and catching the C flag
+; cleared. (C flag is set for a roll-over with addwf, cleared for roll-under for subwf.
+; For a quickie but not perfect count down of a two byte variable, decf and the Z flag can be used
+; but the upper byte will be decremented one count too early.
 ;
 ;--------------------------------------------------------------------------------------------------
 ; Operational Notes
@@ -44,6 +60,26 @@
 ;
 ; The cam should turn clockwise when the head is being driven down.
 ; The cam should make a full rotation in 65 seconds while jogging up or down in Setup mode.
+;
+; The motor used for the OPT standard reach head is:
+;
+; manufactured by Faulhaber @ http://www.faulhaber.com/
+; sold by www.micromo.com
+;
+; Printed on motor: 
+;
+;	ARSAPE
+;	swiss made
+;	AM1524-A-025-125-71
+;
+; 	AM1524 	  ~ AM motor design, 15 mm diameter, 24 steps per revolution
+;	A-025-125 ~ -A-0,25-12,5 Winding Type
+;	71	  ~ 71 (-73)  ~ Plain shaft, L=4,3mm (Designation for assembly with gearhead 15A)
+;
+; A planetary gearhead is attached: Faulhaber Series 15A.  There are no identifying numbers for
+; the gearhead printed on the assembly.
+; 
+; Using Full Step mode, the motor has 24 steps per revolution.
 ;
 ;--------------------------------------------------------------------------------------------------
 ;
@@ -805,13 +841,13 @@ timer0Interrupt:            ; Routine when the Timer1 overflows
 
     bcf     STATUS,RP0      ; select data bank 0 to access variables
 
-    movf    debounce0,W
+    movf    debounce0,W		; if debounce counter is zero, don't decrement it
     iorwf   debounce1,W
     btfsc   STATUS,Z
     goto    doLCD
 
-    decfsz  debounce0,F     ; count down debounce timer
-    goto    doLCD
+    decf	debounce0,F     ; count down debounce timer
+    btfsc   STATUS,Z		; not perfect count down - Z flag set one count before roll-under
     decf    debounce1,F
 
 doLCD:
@@ -931,8 +967,8 @@ flipSign:
 
     comf    scratch0,F
     comf    scratch1,F
-    incf    scratch0,F
-    btfsc   STATUS,Z
+    incf    scratch0,F				; see note "incf vs decf rollover"
+    btfsc   STATUS,Z		
     incf    scratch1,F
     return
 
@@ -1142,7 +1178,6 @@ LoopDEMM1:
 
     ; handle option 1 - non-extended reach cutting head installed
 
-
     bcf     flags,EXTENDED_MODE ; set flag to 0
 
     movlw   STANDARD_RATIO1
@@ -1190,6 +1225,9 @@ skipDEMM7:
 
 exitDEMM7:
 
+	; store the negative of ratio1:ratio0 in ratio_neg1:ratio_neg0
+	; the negative number is used to catch match when pre-scaler goes negative
+
     movf    ratio1,W
     movwf   ratio_neg1
     movf    ratio0,W
@@ -1197,7 +1235,7 @@ exitDEMM7:
 
     comf    ratio_neg0,F
     comf    ratio_neg1,F
-    incf    ratio_neg0,F
+    incf    ratio_neg0,F		; see note "incf vs decf rollover"
     btfsc   STATUS,Z
     incf    ratio_neg1,F
     
@@ -1944,11 +1982,9 @@ moveDownCT:
 	;count how many ticks the blade travels down before touchdown - on the up cycle this
 	;count will be used to stop the blade in approximately the original start position
 	;each time - as a cut is made, the up and down positions will move down slowly
-	incfsz  debug0,F		; increment low byte
-	goto	noIncCT
-	incf	debug1,F		; increment high byte
-
-noIncCT:
+	incf	debug0,F			; increment low byte ~ see note "incf vs decf rollover"
+    btfsc   STATUS,Z
+	incf	debug1,F			; increment high byte
 
     movlw   position3
     call    incBCDVar       ; going down increments the position
@@ -2025,8 +2061,8 @@ skipDirSymUpdateCT:
 
 	; user counter to return blade to original start position
 
-    movlw   0xff            ; decrement LSByte by adding -1
-    addwf   debug0,F
+    movlw   .1	            ; decrement LSByte
+    subwf   debug0,F		; see note "incf vs decf rollover"
     btfss   STATUS,C		; did LSByte roll under (0->255)?
 	decf	debug1,F		; decrement MSByte after LSByte roll under
 	movf	debug0,W		; check MSB:LSB for zero
@@ -3474,7 +3510,7 @@ incBCDVar:
 
     movwf   scratch0        ; store the variable address
 
-    incf    preScaler0,F    ; count up the preScaler
+    incf    preScaler0,F    ; count up the preScaler ~ see note "incf vs decf rollover"
     btfsc   STATUS,Z    
     incf    preScaler1,F
     
@@ -3485,7 +3521,7 @@ incBCDVar:
     movf    ratio0,W        ; byte 0
     subwf   preScaler0,W
     btfss   STATUS,Z         
-    return                  ; if scaler not maxed, don't inc BCD 
+    return                  ; if preScaler not maxed, don't inc BCD 
 
     clrf    preScaler1
     clrf    preScaler0      ; restart the counter
@@ -3551,18 +3587,18 @@ decBCDVar:
     movwf   scratch0        ; store the variable address
 
     movlw  .1
-    subwf   preScaler0,F    ; count down the preScaler (dec doesn't set the C flag)
+    subwf   preScaler0,F    ; count down the preScaler ~ see note "incf vs decf rollover"
     btfss   STATUS,C
     decf    preScaler1,F
 
-    movf    ratio_neg1,W        ; byte 1
+    movf    ratio_neg1,W    ; byte 1
     subwf   preScaler1,W
     btfss   STATUS,Z         
     return
-    movf    ratio_neg0,W        ; byte 0
+    movf    ratio_neg0,W	; byte 0
     subwf   preScaler0,W
     btfss   STATUS,Z         
-    return                  ; if scaler not maxed, don't inc BCD 
+    return                  ; if preScaler not maxed, don't dec BCD 
 
     clrf    preScaler1
     clrf    preScaler0      ; restart the counter
