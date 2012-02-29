@@ -1,10 +1,13 @@
 ;--------------------------------------------------------------------------------------------------
-; Project:  Treco EDM Notch Cutter
-; Date:     1/18/08
-; Revision: 7.7d
+; Project:  OPT EDM Notch Cutter -- Main PIC software
+; Date:     2/29/12
+; Revision: 1.0
 ;
 ; IMPORTANT: When programming the PIC in the notch cutter, turn the Electrode Current switch to
 ; Off and the Electrode Motion switch to Setup.
+;
+; Normally, the programming header for the LCD PIC is not installed on the board.  It can be
+; installed in the Main PIC socket, programmed, and then moved to the LCD PIC socket.
 ;
 ; Overview:
 ;
@@ -14,6 +17,10 @@
 ; material being cut so that the current maintains optimum value.
 ;
 ; The program monitors several button inputs and displays data on an LCD display.
+;
+; There are two PIC controllers on the board -- the Main PIC and the LCD PIC.  This code is
+; for the LCD PIC.  The Main PIC sends data to the LCD PIC via a serial data line for display
+; on the LCD.
 ;
 ;--------------------------------------------------------------------------------------------------
 ;
