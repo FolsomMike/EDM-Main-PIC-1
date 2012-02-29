@@ -1,0 +1,6 @@
+Comparing files Code read from unmarked LCD PIC 1 (disassembled).TXT and CODE READ FROM UNMARKED LCD PIC 2 (DISASSEMBLED).TXT
+***** Code read from unmarked LCD PIC 1 (disassembled).TXT
+ 
+***** CODE READ FROM UNMARKED LCD PIC 2 (DISASSEMBLED).TXT
+*****
+

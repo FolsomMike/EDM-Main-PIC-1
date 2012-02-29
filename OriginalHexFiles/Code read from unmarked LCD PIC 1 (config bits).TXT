@@ -1,0 +1,12 @@
+16F628A
+
+   Address    Value   Field               Category                                                      Setting                                        
+
+    2007      3F51  FOSC    Oscillator Selection bits           INTOSC oscillator: CLKOUT function on RA6/OSC2/CLKOUT pin, I/O function on RA7/OSC1/CLKIN
+                    WDTE    Watchdog Timer Enable bit           WDT disabled                                                                           
+                    PWRTE   Power-up Timer Enable bit           PWRT enabled                                                                           
+                    MCLRE   RA5/MCLR/VPP Pin Function Select bitRA5/MCLR/VPP pin function is digital input, MCLR internally tied to VDD                
+                    BOREN   Brown-out Detect Enable bit         BOD enabled                                                                            
+                    LVP     Low-Voltage Programming Enable bit  RB4/PGM pin has digital I/O function, HV on MCLR must be used for programming          
+                    CPD     Data EE Memory Code Protection bit  Data memory code protection off                                                        
+                    CP      Flash Program Memory Code Protection bitCode protection off                                                                    

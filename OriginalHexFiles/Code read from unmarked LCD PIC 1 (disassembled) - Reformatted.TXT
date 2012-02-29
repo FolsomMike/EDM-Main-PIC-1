@@ -1,0 +1,220 @@
+
+ org 0x0
+ MOVLW 0x7                              
+ MOVWF 0x1f                             
+ BSF 0x3, 0x5                           
+ MOVLW 0x1                              
+ MOVWF 0x5                              
+ MOVLW 0                                
+ MOVWF 0x6                              
+ BCF 0x3, 0x5                           
+ MOVLW 0                                
+ MOVWF 0x6                              
+ BCF 0x5, 0x1                           
+ BCF 0x5, 0x2                           
+ BSF 0x5, 0x3                           
+ BCF 0x5, 0x4                           
+ CALL 0xae                              
+ CALL 0x7e                              
+ MOVLW 0x80                             
+ MOVWF 0x6e                             
+ CALL 0xa0                              
+ MOVLW 0x4f                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x50                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x54                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x20                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x45                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x44                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x4d                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0xc1                             
+ MOVWF 0x6e                             
+ CALL 0xa0                              
+ MOVLW 0x4e                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x6f                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x74                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x63                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x68                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x65                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x72                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x96                             
+ MOVWF 0x6e                             
+ CALL 0xa0                              
+ MOVLW 0x62                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x79                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x20                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x43                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x4d                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x50                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0xd7                             
+ MOVWF 0x6e                             
+ CALL 0xa0                              
+ MOVLW 0x52                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x65                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x76                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x20                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x32                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x2e                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ MOVLW 0x36                             
+ MOVWF 0x6e                             
+ CALL 0x98                              
+ CLRF 0x6a                              
+ CALL 0xb9                              
+ MOVF 0x6a, W                           
+ MOVWF 0x6d                             
+ CLRF 0x6a                              
+ CALL 0xb9                              
+ MOVF 0x6a, W                           
+ MOVWF 0x6e                             
+ MOVF 0x6d, W                           
+ SUBLW 0                                
+ BTFSC 0x3, 0x2                         
+ CALL 0x98                              
+ MOVF 0x6d, W                           
+ SUBLW 0x1                              
+ BTFSC 0x3, 0x2                         
+ CALL 0xa0                              
+ GOTO 0x6d                              
+ BCF 0x5, 0x1                           
+ BCF 0x5, 0x2                           
+ CALL 0xa9                              
+ MOVLW 0x30                             
+ MOVWF 0x6                              
+ CALL 0xb4                              
+ CALL 0xae                              
+ MOVLW 0x30                             
+ MOVWF 0x6                              
+ CALL 0xb4                              
+ CALL 0xa9                              
+ MOVLW 0x30                             
+ MOVWF 0x6                              
+ CALL 0xb4                              
+ CALL 0xa9                              
+ MOVLW 0x38                             
+ MOVWF 0x6                              
+ CALL 0xb4                              
+ MOVLW 0xc                              
+ MOVWF 0x6                              
+ CALL 0xb4                              
+ MOVLW 0x6                              
+ MOVWF 0x6                              
+ CALL 0xb4                              
+ CALL 0xae                              
+ RETURN                                 
+ BCF 0x5, 0x1                           
+ BSF 0x5, 0x2                           
+ CALL 0xa9                              
+ MOVF 0x6e, W                           
+ MOVWF 0x6                              
+ CALL 0xb4                              
+ CALL 0xa9                              
+ RETURN                                 
+ BCF 0x5, 0x1                           
+ BCF 0x5, 0x2                           
+ CALL 0xa9                              
+ MOVF 0x6e, W                           
+ MOVWF 0x6                              
+ CALL 0xb4                              
+ BSF 0x5, 0x2                           
+ CALL 0xa9                              
+ RETURN                                 
+ MOVLW 0x2a                             
+ MOVWF 0x68                             
+ DECFSZ 0x68, F                         
+ GOTO 0xab                              
+ RETURN                                 
+ MOVLW 0x28                             
+ MOVWF 0x69                             
+ CALL 0xa9                              
+ DECFSZ 0x69, F                         
+ GOTO 0xb0                              
+ RETURN                                 
+ BSF 0x5, 0x1                           
+ NOP                                    
+ BCF 0x5, 0x1                           
+ CALL 0xa9                              
+ RETURN                                 
+ BCF 0xb, 0x5                           
+ BCF 0xb, 0x7                           
+ CLRF 0x1                               
+ CLRWDT                                 
+ BSF 0x3, 0x5                           
+ MOVLW 0x58                             
+ MOVWF 0x1                              
+ BCF 0x3, 0x5                           
+ MOVLW 0x8                              
+ MOVWF 0x6b                             
+ BTFSC 0x5, 0                           
+ GOTO 0xc3                              
+ MOVLW 0xe2                             
+ MOVWF 0x1                              
+ BCF 0xb, 0x2                           
+ BTFSS 0xb, 0x2                         
+ GOTO 0xc8                              
+ BTFSC 0x5, 0                           
+ GOTO 0xc3                              
+ MOVLW 0xce                             
+ MOVWF 0x1                              
+ BCF 0xb, 0x2                           
+ BTFSS 0xb, 0x2                         
+ GOTO 0xcf                              
+ BCF 0xb, 0x2                           
+ MOVF 0x5, W                            
+ MOVWF 0x6c                             
+ RRF 0x6c, F                            
+ RLF 0x6a, F                            
+ DECFSZ 0x6b, F                         
+ GOTO 0xcc                              
+ RETURN                                 
+ 

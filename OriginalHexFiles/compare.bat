@@ -1,0 +1,1 @@
+fc "Code read from unmarked LCD PIC 1 (disassembled).TXT" "Code read from unmarked LCD PIC 2 (disassembled).TXT" /L/N > compared.txt
