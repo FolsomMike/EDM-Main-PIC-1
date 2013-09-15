@@ -141,7 +141,7 @@
 ;
 ; Port B
 ;
-; RBO   Out - Motor Step
+; RB0   Out - Motor Step
 ; RB1   Out - Motor Direction
 ; RB2   Out - Motor Mode Step Size - (Microstep Select Full/Half/Quarter/Eighth)
 ; RB3   In  - Reset Button
@@ -221,19 +221,17 @@ EXTENDED_RATIO0  EQU     0x37
 
 ; Specify Device Configuration Bits
 
-  __CONFIG _RC_OSC_NOCLKOUT & _WDT_OFF & _PWRTE_ON & _EXTCLK_OSC & _MCLRE_OFF & _LVP_OFF
+  __CONFIG _HS_OSC & _WDT_OFF & _PWRTE_ON & _MCLRE_OFF & _BOREN_OFF & _LVP_OFF & _CPD_OFF & _CP_OFF
 
-
-;_RC_OSC_NOCLKOUT = (see clock info below)
+;_HS_OSC = High-speed crystal/resonator on RA6/OSC2/CLKOUT and RA7/OSC1/CLKIN
 ;_WDT_OFF = watch dog timer is off
 ;_PWRTE_ON = device will delay startup after power applied to ensure stable operation
-;_EXTCLK_OSC = (see clock info below)
-;_MCLRE_OFF = RA5/MCLR/VPP pin function is digital input, MCLR internally to VDD 
+;_MCLRE_OFF = RA5/MCLR/VPP pin function is digital input, MCLR internally to VDD
+;_BOREN_ON = Brown Out Reset is on -- low supply voltage will cause device reset
 ;_LVP_OFF = RB4/PGM is digital I/O, HV on MCLR must be used for programming
 ;           (device cannot be programmed in system with low voltage)
-;
-;_EXTCLK_OSC & _RC_OSC_NOCLKOUT control clock configuration
-;above settings = 010 = HS oscillator: high-speed crystal/resonator on RA6/OSC2/CLKOUT and RA7/OSC1/CLKIN
+;_CPD_OFF = data memory is not protected and can be read from the device
+;_CP_OFF = code memory is not protected and can be read from the device
 ;
 ;for improved reliability, Watch Dog code can be added and the Watch Dog Timer turned on - _WDT_ON
 ;turn on code protection to keep others from reading the code from the chip - _CP_ON
@@ -364,15 +362,26 @@ inDelay         EQU     0x04
     setupDelay              ; delay between motor pulses for setup mode (fast)
 
     cursorPos               ; contains the location of the cursor
-                            ; NOTE: LCD addressing is screwy - for some reason the lines are not in
-                            ; sequential order:
-                            ; line 1 column 1 = 0x80
-                            ; line 2 column 1 = 0xC0
-                            ; line 3 column 1 = 0x94
-                            ; line 4 column 1 = 0xd4
-                            
-                            ; To address the second column in each line, use 81, C1, 95, d5, etc.
-         
+                            ; NOTE: LCD addressing is screwy - the lines are not in sequential order:
+                            ; line 1 column 1 = 0x80  	(actually address 0x00)
+                            ; line 2 column 1 = 0xc0	(actually address 0x40)
+                            ; line 3 column 1 = 0x94	(actually address 0x14)
+                            ; line 4 column 1 = 0xd4	(actually address 0x54)
+							;
+							; To address the second column in each line, use 81, C1, 95, d5, etc.
+							;
+							; The two different columns of values listed above are due to the fact that the address
+							; is in bits 6:0 and control bit 7 must be set to signal that the byte is an address
+							; byte.  Thus, 0x00 byte with the control bit set is 0x80.  The 0x80 value is what is
+							; actually sent to the LCD to set address 0x00.
+							;
+							;  Line 3 is actually the continuation in memory at the end of line 1
+							;    (0x94 - 0x80 = 0x14 which is 20 decimal -- the character width of the display)
+							;  Line 4 is a similar extension of line 2.
+                            ;
+							; Note that the user manual offered by Optrex shows the line addresses
+							; for 20 character wide displays at the bottom of page 20.
+
     scratch0                ; these can be used by any function
     scratch1
     scratch2
@@ -783,7 +792,7 @@ saveFlagsToEEprom:
 resetLCD:
 
     movlw   0x1
-    call    writeControl    ; write 0x1,0x1 to the LCD
+    call    writeControl    ; send Clear Display control code to the LCD
 
     movlw   0x80
     call    writeControl    ; position at line 1 column 1
@@ -2906,12 +2915,12 @@ negativeDP:
 
 clearScreen:
 
-; clear the screen (not sure which commands here are necessary for that)
+; reset LCD modes to known and clear the screen
 
-    call    writeFF         ; Form Feed to LCD
+    call    setLCDMode
 
     movlw   0x1
-    call    writeControl    ; write 1,0x1 to LCD
+    call    writeControl    ; send Clear Display control code to the LCD
     
     movlw   0x80
     call    writeControl    ; position at line 1 column 1
@@ -3944,27 +3953,34 @@ flushAndWaitLCD:
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
-; writeFF
+; setLCDMode
 ;
-; Writes 0xc (ASCII for Form Feed) to the LCD.  This is stored in the LCD print buffer after
-; any data already in the buffer.
+; Sets the LCD display on, cursor off, blink off.
+;
+; This is stored in the LCD print buffer after any data already in the buffer.
 ;
 ; Uses W, TMR0, OPTION_REG, scratch0, scratch1, scratch2, scratch3
 ;
 ; NOTE: The data is placed in the print buffer but is not submitted to be printed.  After using
 ; this function, call flushLCD or printString to flush the buffer.
 ;
+; send LCD instruction 0000 1100 ~ Display On, cursor off, blink off
+;  bit 3: specifies display on/off command
+;  bit 2: 0 = display off, 1 = display on
+;  bit 1: 0 = cursor off, 1 = cursor on
+;  bit 0: 0 = blink off, 1 = blink on
+;
 
-writeFF:
+setLCDMode:
 
-    movlw   0xc                   
-    movwf   scratch0        ; scratch0 = 0xc (ASCII for Form Feed)
+    movlw   0xc     		; send control code 0x0c to LCD (see above for bit meanings)              
+    movwf   scratch0
 
-    call    writeControl    ; write 1 followed by FF to LCD
+    call    writeControl
 
     return
 
-; end of writeFF
+; end of setLCDMode
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
@@ -3982,7 +3998,7 @@ writeFF:
 writeCR:
 
     movlw   0xd
-    movwf   scratch0        ; scratch0 = 0xd (ASCII for Carriage Return
+    movwf   scratch0        ; scratch0 = 0xd (ASCII for Carriage Return)
 
     call    writeControl    ; write 1 followed by CR to LCD
 
