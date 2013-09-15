@@ -45,6 +45,8 @@
 ;		back to a previous menu page.
 ; 7.7e  Fixed incrementing/decrementing of multibyte variables -- decrementing was skipping a
 ;		count when crossing the zero thresold of an upper byte.
+; 7.7f	Fixed comments explaining commands to the LCD screen. Cleaned up superfluous code.
+;
 ;
 ;--------------------------------------------------------------------------------------------------
 ; Miscellaneous Notes
@@ -3973,8 +3975,7 @@ flushAndWaitLCD:
 
 setLCDMode:
 
-    movlw   0xc     		; send control code 0x0c to LCD (see above for bit meanings)              
-    movwf   scratch0
+    movlw   0xc     		; send control code 0x0c to LCD (see above for bit meanings)
 
     call    writeControl
 
@@ -3998,7 +3999,6 @@ setLCDMode:
 writeCR:
 
     movlw   0xd
-    movwf   scratch0        ; scratch0 = 0xd (ASCII for Carriage Return)
 
     call    writeControl    ; write 1 followed by CR to LCD
 
@@ -4304,7 +4304,7 @@ string0:    ; "OPT AutoNotcher Rx.x"
     retlw   '7'
     retlw   '.'
     retlw   '7'
-    retlw   'd'
+    retlw   'f'
 
 string1:    ; "CHOOSE CONFIGURATION"
 
