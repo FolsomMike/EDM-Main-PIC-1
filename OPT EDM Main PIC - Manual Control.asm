@@ -1,7 +1,7 @@
 ;--------------------------------------------------------------------------------------------------
-; Project:  OPT EDM Notch Cutter -- Main PIC software
-; Date:     2/29/12
-; Revision: 1.0
+; Project:  OPT EDM Notch Cutter - Manual Control -- Main PIC software
+; Date:     9/30/13
+; Revision: See Revision History notes below.
 ;
 ; IMPORTANT: When programming the PIC in the notch cutter, turn the Electrode Current switch to
 ; Off and the Electrode Motion switch to Setup.
@@ -11,12 +11,28 @@
 ;
 ; Overview:
 ;
-; This program controls an EDM cutting device by manipulating a motor which moves the head up and
-; down and a high current power supply which provides voltage to the cutting blade.  The current
-; output of the electrode cutting blade is monitored to adjust the height of the blade above the
-; material being cut so that the current maintains optimum value.
+; This program is a manual version of "OPT EDM Main Pic.asm". At its simplest, it only allows
+; the user to jog the cutting head up and down.
 ;
-; The program monitors several button inputs and displays data on an LCD display.
+; On startup, if the Mode switch is in the up position, it invokes the settings for the standard
+; cutting head; if the switch is in the down position, it invokes the settings for the extended
+; reach head.
+;
+; The program jumps straight to the "Jog" function so the user can manipulate the cutting head
+; height. As in the original program, setting the Mode switch to the up position will invoke the
+; "setup" mode which moves the head faster; the down position invokes the "normal" mode which
+; moves the head at a slower speed appropriate for cutting.
+;
+; If an LCD is not attached, the "Menu Select" should currently be left UNCONNECTED as it
+; could be used to exit the jog function with no way to re-enter as there is no LCD screen to
+; allow for navigation of the menus.
+;
+; Most, if not all, of the code from "OPT EDM Main Pic.asm" is in place -- an LCD could be
+; connected and would be driven.
+;
+; This program sets the cutting power on/off output to "on" as is typical for the "jog" function.
+; The cutting power supply controls can be connected directly to an on/off switch rather than to
+; the board for simplicity.
 ;
 ; There are two PIC controllers on the board -- the Main PIC and the LCD PIC.  This code is
 ; for the LCD PIC.  The Main PIC sends data to the LCD PIC via a serial data line for display
@@ -26,26 +42,7 @@
 ;
 ; Revision History:
 ;
-; 1.0   Some code and concepts used from source code disassembled from hex object code version 6.4 
-;       from original author.
-; 7.6e	Version distributed.  Has aggression control.
-; 7.7a	Fixed bug: asterisk wasn't displaying by the "Up" label when doing fast retract from
-;		 over current condition in auto cut mode.
-;		Increased responsiveness in auto cut mode.
-;		Changed motor step size back to Full.  This was the original setting used by the designer.
-; 7.7b  Motor direction reversed so motor wiring makes more sense.
-;		The "R" prefix removed from the displayed version so that the letter suffix can fit.
-; 7.7c	Added "repeat cycle" test function for testing for proper operation.  The head will be
-;		driven down until the low current input signal is cleared and then retracted quickly
-;		back to the starting position.  The cycle is repeated until the user exits.
-; 7.7d	Fixed bug in "repeat cycle" test where it was locking up in the retreat mode because
-;		the power supply wasn't coming up fast enough at the start.
-;		Improved the input button handling - better debounce, faster response.
-;		Improved the multiple page menu handling - cursor starts on bottom option when moving
-;		back to a previous menu page.
-; 7.7e  Fixed incrementing/decrementing of multibyte variables -- decrementing was skipping a
-;		count when crossing the zero thresold of an upper byte.
-; 7.7f	Fixed comments explaining commands to the LCD screen. Cleaned up superfluous code.
+; 1.0   Code copied from "OPT EDM Main Pic.asm" to create a manual control version.
 ;
 ;
 ;--------------------------------------------------------------------------------------------------
@@ -570,7 +567,25 @@ inDelay         EQU     0x04
 
 start:
 
-    call    setup           ; preset variables and configure hardware
+    call    setup           	; preset variables and configure hardware
+
+    btfsc   BUTTONS,MODE		; Mode button in up position -- set nonextended mode
+    call	setNonExtendedMode
+
+    btfss   BUTTONS,MODE		; mode button in down position -- set extended mode
+    call	setExtendedMode
+
+manualLoop:
+
+	call	jogMode				; jump straight to jog mode -- this allows manual control
+								; of the cutting head without user having to navigate the menus
+
+
+	goto	manualLoop			; if jog mode exited for some reason (shouldn't happen) then
+								; re-enter it
+
+; this part never reached for this manual version of the program -- above code jumps straight to
+; the "jog" function above
 
 menuLoop:
 
@@ -1196,6 +1211,8 @@ LoopDEMM1:
 
     ; handle option 1 - non-extended reach cutting head installed
 
+setNonExtendedMode:
+
     bcf     flags,EXTENDED_MODE ; set flag to 0
 
     movlw   STANDARD_RATIO1
@@ -1218,6 +1235,8 @@ skipDEMM6:
     goto    skipDEMM7
 
     ; handle option 2 - extended reach cutting head installed
+
+setExtendedMode
 
     bsf     flags,EXTENDED_MODE ; set flag to 1
 
@@ -2799,7 +2818,10 @@ not_dwnJM:
 ; reset/enter/zero button press
 
     btfsc   BUTTONS,MODE    ; in Setup mode?
-    goto    exitJM          ; exit Jog Mode if not when Reset/Enter/Zero button pressed
+
+	; next line commented out for manual version so jog mode won't exit if reset button input active
+
+    ;goto    exitJM          ; exit Jog Mode if not when Reset/Enter/Zero button pressed
 
 ; removed because this was a pain - better to be able to zero after a cut - can start a new
 ; cut this way without powering down
