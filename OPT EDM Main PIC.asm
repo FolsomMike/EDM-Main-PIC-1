@@ -1,7 +1,7 @@
 ;--------------------------------------------------------------------------------------------------
 ; Project:  OPT EDM Notch Cutter -- Main PIC software
 ; Date:     2/29/12
-; Revision: 1.0
+; Revision: See Revision History notes below.
 ;
 ; IMPORTANT: When programming the PIC in the notch cutter, turn the Electrode Current switch to
 ; Off and the Electrode Motion switch to Setup.
@@ -19,8 +19,26 @@
 ; The program monitors several button inputs and displays data on an LCD display.
 ;
 ; There are two PIC controllers on the board -- the Main PIC and the LCD PIC.  This code is
-; for the LCD PIC.  The Main PIC sends data to the LCD PIC via a serial data line for display
+; for the Main PIC.  The Main PIC sends data to the LCD PIC via a serial data line for display
 ; on the LCD.
+;
+; 
+;--------------------------------------------------------------------------------------------------
+; Notes on PCLATH
+;
+; The program counter (PC) is 13 bits. The lower 8 bits can be read and written as register PCL.
+; The upper bits cannot be directly read or written.
+;
+; When the PCL register is written, PCLATH<4:0> is copied at the same time to the upper 5 bits of
+; PC.
+;
+; When a goto is executed, 11 bits embedded into the goto instruction are loaded into the PC<10:0>
+; while bits PCLATH<4:3> are copied to bits PC<12:11>
+;
+; Changing PCLATH does NOT instantly change the PC register. The PCLATH will be used the next time
+; a goto is executed (or similar opcode) or the PCL register is written to. Thus, to jump farther
+; than the 11 bits (2047 bytes) in the goto opcode will allow, the PCLATH register is adjusted
+; first and then the goto executed.
 ;
 ;--------------------------------------------------------------------------------------------------
 ;
@@ -46,6 +64,7 @@
 ; 7.7e  Fixed incrementing/decrementing of multibyte variables -- decrementing was skipping a
 ;		count when crossing the zero thresold of an upper byte.
 ; 7.7f	Fixed comments explaining commands to the LCD screen. Cleaned up superfluous code.
+; 7.7g	Refactoring for clarity.
 ;
 ;
 ;--------------------------------------------------------------------------------------------------
@@ -217,6 +236,10 @@ EXTENDED_RATIO0  EQU     0x37
 
     errorLevel  -302 ; Suppresses Message[302] Register in operand not in bank 0.
 
+	errorLevel	-202 ; Suppresses Message[205] Argument out of range. Least significant bits used.
+					 ;	(this is displayed when a RAM address above bank 1 is used -- it is
+					 ;	 expected that the lower bits will be used as the lower address bits)
+
 #INCLUDE <P16f648a.inc> 		; Microchip Device Header File
 
 #INCLUDE <STANDARD.MAC>     	; include standard macros
@@ -293,6 +316,22 @@ stopBit         EQU     0x02
 endBuffer       EQU     0x03
 inDelay         EQU     0x04
 
+; LCD Display Commands
+
+CLEAR_SCREEN_CMD	EQU		0x01
+
+; LCD Display On/Off Command bits
+
+;  bit 3: specifies that this is a display on/off command if 1
+;  bit 2: 0 = display off, 1 = display on
+;  bit 1: 0 = cursor off, 1 = cursor on
+;  bit 0: 0 = character blink off, 1 = blink on
+
+DISPLAY_ONOFF_CMD_FLAG	EQU		0x08
+DISPLAY_ON_FLAG			EQU		0x04
+CURSOR_ON_FLAG			EQU		0x02
+BLINK_ON_FLAG			EQU		0x01
+
 ; end of Software Definitions
 ;--------------------------------------------------------------------------------------------------
 
@@ -305,6 +344,7 @@ inDelay         EQU     0x04
 ; 
 
 ; Assign variables in RAM - Bank 0 - must set RP0:RP1 to 0:0 to access
+; Bank 0 has 80 bytes of free space
 
  cblock 0x20                ; starting address
 
@@ -417,8 +457,10 @@ inDelay         EQU     0x04
 
  endc
 
+;-----------------
 
 ; Assign variables in RAM - Bank 1 - must set RP0:RP1 to 0:1 to access
+; Bank 1 has 80 bytes of free space
 
  cblock 0xa0                ; starting address
 
@@ -502,11 +544,32 @@ inDelay         EQU     0x04
     LCDBuffer3f
 
  endc
+
+;-----------------
+
+; Assign variables in RAM - Bank 2 - must set RP0:RP1 to 1:0 to access
+; Bank 2 has 80 bytes of free space
+
+ cblock 0x120                ; starting address
+
+	block1PlaceHolder
+
+ endc
+
+;-----------------
  
 ; Define variables in the memory which is mirrored in all 4 RAM banks.  This area is usually used
 ; by the interrupt routine for saving register states because there is no need to worry about
 ; which bank is current when the interrupt is invoked.
 ; On the PIC16F628A, 0x70 thru 0x7f is mirrored in all 4 RAM banks.
+
+; NOTE:
+; This block cannot be used in ANY bank other than by the interrupt routine.
+; The mirrored sections:
+;
+;	Bank 0		Bank 1		Bank 2		Bank3
+;	70h-7fh		f0h-ffh		170h-17fh	1f0h-1ffh
+;
 
  cblock	0x70
     W_TEMP
@@ -559,7 +622,7 @@ inDelay         EQU     0x04
 	PUSH_MACRO              ; MACRO that saves required context registers
 	clrf	STATUS          ; set to known state
     clrf    PCLATH          ; set to bank 0 where the ISR is located
-    goto interruptHandler	; points to interrupt service routine
+    goto 	handleInterrupt	; points to interrupt service routine
 
 ; end of Reset Vectors
 ;--------------------------------------------------------------------------------------------------
@@ -614,14 +677,14 @@ setup:
     movwf   TRISA           ; 0x38 -> TRISA = PortA I/O 0011 1000 (1=input, 0=output)
 
     movlw   0x58
-    movwf   OPTION_REG      ; Option Register = 0x58   0101 1000b
-                            ; bit 7 = 0 : PORTB pullups active
+    movwf   OPTION_REG      ; Option Register = 0x58   0101 1000 b
+                            ; bit 7 = 0 : PORTB pull-ups are enabled by individual port latch values
                             ; bit 6 = 1 : RBO/INT interrupt on rising edge
-                            ; bit 5 = 0 : Timer 0 clock source = internal instruction clock
-                            ; bit 4 = 1 : Timer 0 inc on HiToLo (not used since source is internal)
-                            ; bit 3 = 0 : Prescaler used by Timer 0
+                            ; bit 5 = 0 : TOCS ~ Timer 0 run by internal instruction cycle clock (CLKOUT ~ Fosc/4)
+                            ; bit 4 = 1 : TOSE ~ Timer 0 increment on high-to-low transition on RA4/T0CKI/CMP2 pin (not used here)
+							; bit 3 = 1 : PSA ~ Prescaler assigned to WatchDog; Timer0 will be 1:1 with Fosc/4
                             ; bit 2 = 0 : Bits 2:0 control prescaler:
-                            ; bit 1 = 0 :    000 = 1:2 for Timer 0
+                            ; bit 1 = 0 :    000 = 1:2 scaling for Timer0 (if assigned to Timer0)
                             ; bit 0 = 0 :
     
     bcf     STATUS,RP0      ; select bank 0
@@ -749,7 +812,7 @@ noClearDepth:
 ; enable the interrupts
 
 	bsf	    INTCON,PEIE	    ; enable peripheral interrupts (Timer0 is a peripheral)
-    bsf     INTCON,T0IE     ; enabe TMR0 interrupts
+    bsf     INTCON,T0IE     ; enable TMR0 interrupts
     bsf     INTCON,GIE      ; enable all interrupts
 
 	bcf	    STATUS,RP0	    ; back to Bank 0
@@ -793,7 +856,7 @@ saveFlagsToEEprom:
 
 resetLCD:
 
-    movlw   0x1
+    movlw   CLEAR_SCREEN_CMD
     call    writeControl    ; send Clear Display control code to the LCD
 
     movlw   0x80
@@ -807,7 +870,7 @@ resetLCD:
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
-; interruptHandler
+; handleInterrupt
 ;
 ; All interrupts call this function.  The interrupt flags must be polled to determine which
 ; interrupts actually need servicing.
@@ -821,18 +884,18 @@ resetLCD:
 ; it is very bad for the interrupt routine to use it.
 ;
 
-interruptHandler:
+handleInterrupt:
 
-	btfsc 	INTCON,T0IF     	; Timer0 overflow interrupt?
-	goto 	timer0Interrupt	    ; YES, so process Timer0
+	btfsc 	INTCON,T0IF     		; Timer0 overflow interrupt?
+	goto 	handleTimer0Interrupt	; YES, so process Timer0
            
 ; Not used at this time to make interrupt handler as small as possible.
-;	btfsc 	INTCON, RBIF      	; NO, Change on PORTB interrupt?
+;	btfsc 	INTCON, RBIF      		; NO, Change on PORTB interrupt?
 ;	goto 	portB_interrupt       	; YES, Do PortB Change thing
 
-INT_ERROR_LP1:		        	; NO, do error recovery
-	;GOTO INT_ERROR_LP1      	; This is the trap if you enter the ISR
-                               	; but there were no expected interrupts
+INT_ERROR_LP1:		        		; NO, do error recovery
+	;GOTO INT_ERROR_LP1      		; This is the trap if you enter the ISR
+                               		; but there were no expected interrupts
 
 endISR:
 
@@ -840,22 +903,22 @@ endISR:
 
 	retfie                  	; Return and enable interrupts
 
-; end of interruptHandler
+; end of handleInterrupt
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
-; timer0Interrupt function^
+; handleTimer0Interrupt
 ;
-; This function is called when the timer 0 registers overflow.
+; This function is called when the Timer0 register overflows.
 ;
 ; NOTE NOTE NOTE
 ; It is important to use no (or very few) subroutine calls.  The stack is only 8 deep and
 ; it is very bad for the interrupt routine to use it.
 ;
 
-timer0Interrupt:            ; Routine when the Timer1 overflows
+handleTimer0Interrupt:
 
-	bcf 	INTCON,T0IF     ; Clear the Timer0 overflow interrupt flag
+	bcf 	INTCON,T0IF     ; clear the Timer0 overflow interrupt flag
 
     bcf     STATUS,RP0      ; select data bank 0 to access variables
 
@@ -964,7 +1027,7 @@ endOfByteCheck:
 
     goto    endISR
 
-; end of timer0Interrupt
+; end of handleTimer0Interrupt
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
@@ -1173,7 +1236,7 @@ doExtModeMenuA:				; call here if default option has already been set by caller
     
     movf    cursorPos,W		; load the cursor position to highlight the current choice
     call    writeControl    ; write line 3 column 1
-    call    writeCR         ; write a carriage return to the LCD
+	call	turnOnBlink
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
 
 ; scan for button inputs, highlight selected option, will return when Reset/Enter/Zero pressed
@@ -1379,7 +1442,7 @@ skipString6:
 
     movf    cursorPos,W		; load the cursor position to highlight the current choice
     call    writeControl    ; position at line 2 column 1
-    call    writeCR         ; write a carriage return to the LCD
+	call	turnOnBlink
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
 
 loopDMM1:
@@ -1532,7 +1595,7 @@ placeCursorDMMP2:
 
     movf    cursorPos,W		; load the cursor position to highlight the current choice
     call    writeControl    ; position at line 1 column 1
-    call    writeCR         ; write a carriage return to the LCD
+	call	turnOnBlink
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
 
 loopDMMP21:
@@ -2468,7 +2531,7 @@ setDepth:
 
     movlw   0xc4
     call    writeControl
-    call    writeCR         ; position the cursor on the first digit
+	call	turnOnBlink
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
 
 ; handle editing
@@ -2500,7 +2563,7 @@ loopSD:
     
     movf    cursorPos,W
     call    writeControl
-    call    writeCR         ; move cursor to the next position
+    call    turnOnBlink
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
 
     goto    loopSD
@@ -2548,7 +2611,7 @@ setCutMode:
 
     movlw   0x94
     call    writeControl
-    call    writeCR         ; position the cursor on the first digit
+	call	turnOnBlink
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
 
 loopSCM:
@@ -2681,7 +2744,7 @@ updateABD:
 
     movf    cursorPos,W
     call    writeControl    ; 
-    call    writeCR         ; position the cursor on the digit
+	call	turnOnBlink
 
     call    flushAndWaitLCD ; force the LCD buffer to print and wait until done
     
@@ -2919,15 +2982,15 @@ clearScreen:
 
 ; reset LCD modes to known and clear the screen
 
-    call    setLCDMode
+    call    turnOffBlink		; turn off character blinking
 
-    movlw   0x1
-    call    writeControl    ; send Clear Display control code to the LCD
+    movlw   CLEAR_SCREEN_CMD	; send Clear Display control code to the LCD
+    call    writeControl    
     
-    movlw   0x80
-    call    writeControl    ; position at line 1 column 1
+    movlw   0x80				; position cursor at line 1 column 1
+    call    writeControl    	
 
-    return                  ; exit menu on error
+    return                  	; exit menu on error
 
 ; end of clearScreen
 ;--------------------------------------------------------------------------------------------------
@@ -3955,40 +4018,36 @@ flushAndWaitLCD:
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
-; setLCDMode
+; turnOffBlink
 ;
-; Sets the LCD display on, cursor off, blink off.
+; Turns off blink function in the LCD. The cursor is also turned off.
 ;
-; This is stored in the LCD print buffer after any data already in the buffer.
+; The command stored in the LCD print buffer after any data already in the buffer.
 ;
 ; Uses W, TMR0, OPTION_REG, scratch0, scratch1, scratch2, scratch3
 ;
 ; NOTE: The data is placed in the print buffer but is not submitted to be printed.  After using
 ; this function, call flushLCD or printString to flush the buffer.
 ;
-; send LCD instruction 0000 1100 ~ Display On, cursor off, blink off
-;  bit 3: specifies display on/off command
-;  bit 2: 0 = display off, 1 = display on
-;  bit 1: 0 = cursor off, 1 = cursor on
-;  bit 0: 0 = blink off, 1 = blink on
-;
 
-setLCDMode:
+turnOffBlink:
 
-    movlw   0xc     		; send control code 0x0c to LCD (see above for bit meanings)
+    movlw   DISPLAY_ONOFF_CMD_FLAG | DISPLAY_ON_FLAG ; display on, cursor off, blink off
 
     call    writeControl
 
     return
 
-; end of setLCDMode
+; end of turnOffBlink
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
-; writeCR
+; turnOnBlink
 ;
-; Writes 0xd (ASCII for Carriage Return) to the LCD.  This is stored in the LCD print buffer after
-; any data already in the buffer.
+; Turns on blink function in the LCD - the current at the address in the address register blinks.
+; The cursor is also turned off.
+;
+; The command is stored in the LCD print buffer after any data already in the buffer.
 ;
 ; Uses W, TMR0, OPTION_REG, scratch0, scratch1, scratch2, scratch3
 ;
@@ -3996,15 +4055,15 @@ setLCDMode:
 ; this function, call flushLCD or printString to flush the buffer.
 ;
 
-writeCR:
+turnOnBlink:
 
-    movlw   0xd
+    movlw   DISPLAY_ONOFF_CMD_FLAG | DISPLAY_ON_FLAG | BLINK_ON_FLAG ; display on, cursor off, blink on
 
-    call    writeControl    ; write 1 followed by CR to LCD
+    call    writeControl
 
     return
 
-; end of writeFF
+; end of turnOnBlink
 ;--------------------------------------------------------------------------------------------------
 
 ;--------------------------------------------------------------------------------------------------
@@ -4039,8 +4098,10 @@ writeChar:
 ;--------------------------------------------------------------------------------------------------
 ; writeControl
 ;
-; Writes a control code to the LCD : writes 0x1 to the LCD, then writes byte in W to LCD.
-; This is stored in the LCD print buffer after any data already in the buffer.
+; Writes a control code to the LCD PIC : sends 0x1 to the LCD PIC, then sends byte in W.
+;
+; These values are stored in the LCD print buffer after any data already in the buffer and
+; transmitted by another function.
 ;
 ; On entry:
 ;
