@@ -230,7 +230,7 @@ EXTENDED_RATIO0  EQU     0x37
 ;--------------------------------------------------------------------------------------------------
 ; Configurations, etc. for the Assembler Tools and the PIC
 
-	LIST p = PIC16F648a	;select the processor
+;	LIST p = PIC16F648a	;select the processor
 
     errorlevel  -306 ; Suppresses Message[306] Crossing page boundary -- ensure page bits are set.
 
@@ -240,7 +240,9 @@ EXTENDED_RATIO0  EQU     0x37
 					 ;	(this is displayed when a RAM address above bank 1 is used -- it is
 					 ;	 expected that the lower bits will be used as the lower address bits)
 
-#INCLUDE <P16f648a.inc> 		; Microchip Device Header File
+;#INCLUDE <P16f648a.inc> 		; Microchip Device Header File
+
+#include <xc.h>
 
 #INCLUDE <STANDARD.MAC>     	; include standard macros
 
