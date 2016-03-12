@@ -1,0 +1,14 @@
+01_EDM_Main-PIC-2
+
+This is the assembler file created from the reverse engineered version pulled from the original board.
+
+It may have modifications added after the reverse-engineering.
+
+It was not originally tracked in Git until after the new code had been used for some time.
+
+It should only be used on the original boards with the manual pots.
+
+That board only had the Main PIC and the LCD PIC and used bit-banging for serial communication between the two.
+
+It should work with the 02_EDM-LCD-PIC-2 file if it becomes necessary to reprogram an old board. Otherwise,
+one of the raw hex files pulled from an original PIC in the root folder should work.
