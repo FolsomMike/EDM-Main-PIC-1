@@ -30,12 +30,12 @@ ifeq ($(TYPE_IMAGE), DEBUG_RUN)
 IMAGE_TYPE=debug
 OUTPUT_SUFFIX=cof
 DEBUGGABLE_SUFFIX=cof
-FINAL_IMAGE=dist/${CND_CONF}/${IMAGE_TYPE}/OPT_EDM_Main_PIC.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+FINAL_IMAGE=dist/${CND_CONF}/${IMAGE_TYPE}/01_EDM-Main-PIC-1.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 else
 IMAGE_TYPE=production
 OUTPUT_SUFFIX=hex
 DEBUGGABLE_SUFFIX=cof
-FINAL_IMAGE=dist/${CND_CONF}/${IMAGE_TYPE}/OPT_EDM_Main_PIC.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+FINAL_IMAGE=dist/${CND_CONF}/${IMAGE_TYPE}/01_EDM-Main-PIC-1.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 endif
 
 # Object Directory
@@ -45,17 +45,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED="OPT EDM Main PIC.asm"
+SOURCEFILES_QUOTED_IF_SPACED=EDM-Main-PIC-1.asm
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED="${OBJECTDIR}/OPT EDM Main PIC.o"
-POSSIBLE_DEPFILES="${OBJECTDIR}/OPT EDM Main PIC.o.d"
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/EDM-Main-PIC-1.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/EDM-Main-PIC-1.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/OPT\ EDM\ Main\ PIC.o
+OBJECTFILES=${OBJECTDIR}/EDM-Main-PIC-1.o
 
 # Source Files
-SOURCEFILES=OPT EDM Main PIC.asm
+SOURCEFILES=EDM-Main-PIC-1.asm
 
 
 CFLAGS=
@@ -72,50 +72,53 @@ LDLIBSOPTIONS=
 FIXDEPS=fixDeps
 
 .build-conf:  ${BUILD_SUBPROJECTS}
-	${MAKE} ${MAKE_OPTIONS} -f nbproject/Makefile-default.mk dist/${CND_CONF}/${IMAGE_TYPE}/OPT_EDM_Main_PIC.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+ifneq ($(INFORMATION_MESSAGE), )
+	@echo $(INFORMATION_MESSAGE)
+endif
+	${MAKE}  -f nbproject/Makefile-default.mk dist/${CND_CONF}/${IMAGE_TYPE}/01_EDM-Main-PIC-1.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 
 MP_PROCESSOR_OPTION=16f648a
 MP_LINKER_DEBUG_OPTION= 
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: assemble
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/OPT\ EDM\ Main\ PIC.o: OPT\ EDM\ Main\ PIC.asm  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR} 
-	@${RM} ${OBJECTDIR}/OPT\ EDM\ Main\ PIC.o.d 
-	@${RM} "${OBJECTDIR}/OPT EDM Main PIC.o" 
-	@${FIXDEPS} dummy.d -e "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC.ERR" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -d__DEBUG -d__MPLAB_DEBUGGER_PK3=1 -q -p$(MP_PROCESSOR_OPTION)  $(ASM_OPTIONS)   \"C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC.asm\" 
-	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC".O "${OBJECTDIR}/OPT EDM Main PIC.o"
-	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC".ERR "${OBJECTDIR}/OPT EDM Main PIC.o".err
-	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC".LST "${OBJECTDIR}/OPT EDM Main PIC.o".lst
-	@${RM}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC".HEX 
-	@${DEP_GEN} -d "${OBJECTDIR}/OPT EDM Main PIC.o"
-	@${FIXDEPS} "${OBJECTDIR}/OPT EDM Main PIC.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
+${OBJECTDIR}/EDM-Main-PIC-1.o: EDM-Main-PIC-1.asm  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/EDM-Main-PIC-1.o.d 
+	@${RM} ${OBJECTDIR}/EDM-Main-PIC-1.o 
+	@${FIXDEPS} dummy.d -e "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1.ERR" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -d__DEBUG -d__MPLAB_DEBUGGER_PK3=1 -q -p$(MP_PROCESSOR_OPTION)  $(ASM_OPTIONS)   \"C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1.asm\" 
+	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1".O ${OBJECTDIR}/EDM-Main-PIC-1.o
+	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1".ERR ${OBJECTDIR}/EDM-Main-PIC-1.o.err
+	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1".LST ${OBJECTDIR}/EDM-Main-PIC-1.o.lst
+	@${RM}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1".HEX 
+	@${DEP_GEN} -d "${OBJECTDIR}/EDM-Main-PIC-1.o"
+	@${FIXDEPS} "${OBJECTDIR}/EDM-Main-PIC-1.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
 else
-${OBJECTDIR}/OPT\ EDM\ Main\ PIC.o: OPT\ EDM\ Main\ PIC.asm  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR} 
-	@${RM} ${OBJECTDIR}/OPT\ EDM\ Main\ PIC.o.d 
-	@${RM} "${OBJECTDIR}/OPT EDM Main PIC.o" 
-	@${FIXDEPS} dummy.d -e "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC.ERR" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION)  $(ASM_OPTIONS)   \"C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC.asm\" 
-	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC".O "${OBJECTDIR}/OPT EDM Main PIC.o"
-	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC".ERR "${OBJECTDIR}/OPT EDM Main PIC.o".err
-	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC".LST "${OBJECTDIR}/OPT EDM Main PIC.o".lst
-	@${RM}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects Git Repositories/OPT EDM Main PIC/OPT EDM Main PIC".HEX 
-	@${DEP_GEN} -d "${OBJECTDIR}/OPT EDM Main PIC.o"
-	@${FIXDEPS} "${OBJECTDIR}/OPT EDM Main PIC.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
+${OBJECTDIR}/EDM-Main-PIC-1.o: EDM-Main-PIC-1.asm  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/EDM-Main-PIC-1.o.d 
+	@${RM} ${OBJECTDIR}/EDM-Main-PIC-1.o 
+	@${FIXDEPS} dummy.d -e "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1.ERR" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION)  $(ASM_OPTIONS)   \"C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1.asm\" 
+	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1".O ${OBJECTDIR}/EDM-Main-PIC-1.o
+	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1".ERR ${OBJECTDIR}/EDM-Main-PIC-1.o.err
+	@${MV}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1".LST ${OBJECTDIR}/EDM-Main-PIC-1.o.lst
+	@${RM}  "C:/Users/Mike/Documents/6 - Controlled Documents/PIC Projects/01_EDM-Main-PIC-1/EDM-Main-PIC-1".HEX 
+	@${DEP_GEN} -d "${OBJECTDIR}/EDM-Main-PIC-1.o"
+	@${FIXDEPS} "${OBJECTDIR}/EDM-Main-PIC-1.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
 endif
 
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: link
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-dist/${CND_CONF}/${IMAGE_TYPE}/OPT_EDM_Main_PIC.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk    
+dist/${CND_CONF}/${IMAGE_TYPE}/01_EDM-Main-PIC-1.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk    
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
-	${MP_LD} $(MP_EXTRA_LD_PRE)   -p$(MP_PROCESSOR_OPTION)  -w -x -u_DEBUG -z__ICD2RAM=1 -m"$(BINDIR_)$(TARGETBASE).map" -w -l"."   -z__MPLAB_BUILD=1  -z__MPLAB_DEBUG=1 -z__MPLAB_DEBUGGER_PK3=1 $(MP_LINKER_DEBUG_OPTION) -odist/${CND_CONF}/${IMAGE_TYPE}/OPT_EDM_Main_PIC.${IMAGE_TYPE}.${OUTPUT_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}     
+	${MP_LD} $(MP_EXTRA_LD_PRE)   -p$(MP_PROCESSOR_OPTION)  -w -x -u_DEBUG -z__ICD2RAM=1 -m"$(BINDIR_)$(TARGETBASE).map" -w -l".." -l"."   -z__MPLAB_BUILD=1  -z__MPLAB_DEBUG=1 -z__MPLAB_DEBUGGER_PK3=1 $(MP_LINKER_DEBUG_OPTION) -odist/${CND_CONF}/${IMAGE_TYPE}/01_EDM-Main-PIC-1.${IMAGE_TYPE}.${OUTPUT_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}     
 else
-dist/${CND_CONF}/${IMAGE_TYPE}/OPT_EDM_Main_PIC.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk   
+dist/${CND_CONF}/${IMAGE_TYPE}/01_EDM-Main-PIC-1.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk   
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
-	${MP_LD} $(MP_EXTRA_LD_PRE)   -p$(MP_PROCESSOR_OPTION)  -w  -m"$(BINDIR_)$(TARGETBASE).map" -w -l"."   -z__MPLAB_BUILD=1  -odist/${CND_CONF}/${IMAGE_TYPE}/OPT_EDM_Main_PIC.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}     
+	${MP_LD} $(MP_EXTRA_LD_PRE)   -p$(MP_PROCESSOR_OPTION)  -w  -m"$(BINDIR_)$(TARGETBASE).map" -w -l".." -l"."   -z__MPLAB_BUILD=1  -odist/${CND_CONF}/${IMAGE_TYPE}/01_EDM-Main-PIC-1.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}     
 endif
 
 
